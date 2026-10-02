@@ -1,0 +1,132 @@
+// Prisma Schema for Apotek Online + AI
+// Multi-Role Pharmacy System (Admin, Staff, Customer)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(cuid())
+  name       String
+  email      String   @unique
+  password   String
+  phone      String?
+  address    String?
+  role       String   @default("CUSTOMER") // Role: ADMIN | STAFF | CUSTOMER
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relasi: 1 User (Customer) memiliki banyak Order dan CartItem
+  orders     Order[]
+  cartItems  CartItem[]
+
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
+  @@map("users")
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  // Relasi: 1 Category memiliki banyak Medicine
+  medicines   Medicine[]
+
+  @@index([name])
+  @@map("categories")
+}
+
+model Medicine {
+  id                   String      @id @default(cuid())
+  name                 String
+  categoryId           String      @map("category_id")
+  description          String?
+  price                Float
+  stock                Int         @default(0)
+  unit                 String      // e.g. "Strip", "Botol", "Box", "Tube"
+  requiresPrescription Boolean     @default(false) @map("requires_prescription")
+  image                String?
+  isActive             Boolean     @default(true) @map("is_active")
+  createdAt            DateTime    @default(now()) @map("created_at")
+  updatedAt            DateTime    @updatedAt @map("updated_at")
+
+  // Relasi
+  category             Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  orderItems           OrderItem[]
+  cartItems            CartItem[]
+
+  @@index([name])
+  @@index([categoryId])
+  @@index([requiresPrescription])
+  @@index([isActive])
+  @@map("medicines")
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  customerId      String        @map("customer_id")
+  totalAmount     Float         @default(0) @map("total_amount")
+  status          String        @default("PENDING") // Status: PENDING_VERIFICATION | PENDING_PAYMENT | CONFIRMED | PROCESSING | SHIPPED | COMPLETED | CANCELLED
+  paymentStatus   String        @default("UNPAID") @map("payment_status") // Payment: UNPAID | PAID | FAILED
+  requiresPrescription Boolean  @default(false) @map("requires_prescription")
+  prescriptionUrl String?       @map("prescription_url")
+  shippingAddress String?       @map("shipping_address")
+  notes           String?
+  rejectionReason String?       @map("rejection_reason")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Relasi
+  customer        User          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items           OrderItem[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String   @map("order_id")
+  medicineId String   @map("medicine_id")
+  quantity   Int      @default(1)
+  price      Float
+  subtotal   Float
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relasi
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  medicine   Medicine @relation(fields: [medicineId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([medicineId])
+  @@map("order_items")
+}
+
+model CartItem {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  medicineId String   @map("medicine_id")
+  quantity   Int      @default(1)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relasi
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  medicine   Medicine @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, medicineId])
+  @@index([userId])
+  @@index([medicineId])
+  @@map("cart_items")
+}
