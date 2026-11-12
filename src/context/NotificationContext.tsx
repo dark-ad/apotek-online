@@ -57,7 +57,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return;
     }
 
-    const token = localStorage.getItem('apotek_token');
+    const token = localStorage.getItem('apotek_auth_token') || localStorage.getItem('apotek_token');
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

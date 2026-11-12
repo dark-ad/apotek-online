@@ -1,31 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../common/Button';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Package, 
-  Save, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle
+import { useToast } from '../../context/ToastContext';
+import { orderService } from '../../services/orderService';
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Package,
+  Save,
+  Star,
+  ShieldCheck,
+  ArrowRight,
 } from 'lucide-react';
 
-export const CustomerProfileView: React.FC = () => {
+interface CustomerProfileViewProps {
+  onNavigateToOrders?: () => void;
+}
+
+const fmtDate = (iso?: string) => {
+  if (!iso) return '-';
+  try {
+    return new Date(iso).toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+  } catch {
+    return iso;
+  }
+};
+
+export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
+  onNavigateToOrders,
+}) => {
   const { user, token, updateProfile } = useAuth();
+  const toast = useToast();
 
-  const [name, setName] = useState<string>(user?.name || '');
-  const [phone, setPhone] = useState<string>(user?.phone || '');
-  const [address, setAddress] = useState<string>(user?.address || '');
-
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
-
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState<boolean>(true);
+  const [name, setName] = useState(user?.name || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [address, setAddress] = useState(user?.address || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [totalOrders, setTotalOrders] = useState<number>(0);
+  const [activeOrders, setActiveOrders] = useState<number>(0);
 
   useEffect(() => {
     if (user) {
@@ -35,215 +53,437 @@ export const CustomerProfileView: React.FC = () => {
     }
   }, [user]);
 
-  // Fetch customer orders
   useEffect(() => {
-    if (token) {
-      fetch('/api/customer/orders', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success && data.data?.orders) {
-            setOrders(data.data.orders);
-          }
-        })
-        .catch((err) => console.error('Error fetching orders:', err))
-        .finally(() => setLoadingOrders(false));
-    }
+    let isMounted = true;
+    const fetchOrderStats = async () => {
+      if (!token) return;
+      try {
+        const res = await orderService.getMyOrders();
+        if (res.success && res.data?.orders && isMounted) {
+          setTotalOrders(res.data.orders.length);
+          const active = res.data.orders.filter(
+            (o) => !['COMPLETED', 'CANCELLED'].includes(o.status)
+          ).length;
+          setActiveOrders(active);
+        }
+      } catch (err) {
+        console.error('Error fetching order stats for profile:', err);
+      }
+    };
+    fetchOrderStats();
+    return () => {
+      isMounted = false;
+    };
   }, [token]);
 
-  const handleSaveProfile = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setSaveSuccess(null);
-    setSaveError(null);
-
-    const res = await updateProfile({ name, phone, address });
-    if (res.success) {
-      setSaveSuccess('Data profil Anda berhasil diperbarui!');
-      setTimeout(() => setSaveSuccess(null), 3000);
-    } else {
-      setSaveError(res.message || 'Gagal menyimpan profil.');
+    try {
+      const res = await updateProfile({ name, phone, address });
+      if (res.success) {
+        toast.success('Profil berhasil diperbarui!');
+      } else {
+        toast.error(res.message || 'Gagal menyimpan profil.');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan saat menyimpan profil.');
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
-  const formatIDR = (val: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0
-    }).format(val);
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '0.75rem 0.875rem 0.75rem 2.6rem',
+    border: '1.5px solid var(--border-light)',
+    borderRadius: '0.65rem',
+    fontSize: '0.9rem',
+    boxSizing: 'border-box',
+    outline: 'none',
+    fontFamily: 'inherit',
+    background: '#fff',
+    color: 'var(--secondary-900)',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
   };
 
   return (
-    <div className="container" style={{ padding: '3rem 1.25rem 5rem 1.25rem' }}>
-      {/* Header Profile */}
-      <div style={{ background: '#ffffff', borderRadius: 'var(--radius-xl)', padding: '2rem', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <div style={{ width: '4.5rem', height: '4.5rem', borderRadius: '50%', background: 'linear-gradient(135deg, #10b981, #0284c7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: '1.75rem', fontWeight: 800 }}>
-            {user?.name.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>{user?.name}</h2>
-              <span className="badge badge-bebas">CUSTOMER</span>
+    <div style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: '4rem' }}>
+      {/* ---- HERO HEADER ---- */}
+      <div
+        style={{
+          background: 'linear-gradient(135deg, #064e3b 0%, #0c4a6e 60%, #1e1b4b 100%)',
+          padding: '2.5rem 0 3.5rem',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(16,185,129,0.15) 0%, transparent 50%)',
+          }}
+        />
+        <div className="container" style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+            <div
+              style={{
+                width: '5rem',
+                height: '5rem',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #10b981, #0284c7)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontSize: '2rem',
+                fontWeight: 800,
+                boxShadow: '0 0 0 4px rgba(255,255,255,0.2)',
+                flexShrink: 0,
+              }}
+            >
+              {user?.name?.charAt(0).toUpperCase() || 'U'}
             </div>
-            <p style={{ color: 'var(--secondary-500)', fontSize: '0.9rem' }}>{user?.email}</p>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+                <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+                  {user?.name}
+                </h1>
+                <span
+                  style={{
+                    background: 'rgba(16,185,129,0.25)',
+                    color: '#6ee7b7',
+                    border: '1px solid rgba(110,231,183,0.4)',
+                    borderRadius: '999px',
+                    padding: '0.2rem 0.7rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  CUSTOMER
+                </span>
+              </div>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', margin: 0 }}>
+                {user?.email}
+              </p>
+            </div>
           </div>
-        </div>
 
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <div style={{ background: 'var(--secondary-50)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '0.75rem 1.25rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-700)' }}>{orders.length}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--secondary-500)', fontWeight: 600 }}>Total Pesanan</div>
+          {/* Stats Bar */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '1rem',
+              marginTop: '2rem',
+            }}
+          >
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: '1rem',
+                padding: '1rem 1.25rem',
+              }}
+            >
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#34d399', marginBottom: '0.25rem' }}>
+                {totalOrders} Pesanan
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+                Total Transaksi Akun ({activeOrders} Berjalan)
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: '1rem',
+                padding: '1rem 1.25rem',
+              }}
+            >
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#60a5fa', marginBottom: '0.25rem' }}>
+                Terverifikasi
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+                Status Akun Customer Aktif
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: '1rem',
+                padding: '1rem 1.25rem',
+              }}
+            >
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fbcfe8', marginBottom: '0.25rem' }}>
+                {fmtDate(user?.createdAt)}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+                Tanggal Pendaftaran Member
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 2 Column Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: '2rem' }}>
-        {/* Left Column: Form Edit Profile */}
-        <div style={{ background: '#ffffff', borderRadius: 'var(--radius-xl)', padding: '2rem', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <User size={18} color="#059669" />
-            Informasi Data Diri & Kontak
-          </h3>
-
-          {saveSuccess && (
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 'var(--radius-md)', padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#166534', fontSize: '0.85rem', marginBottom: '1rem' }}>
-              <CheckCircle2 size={16} />
-              <span>{saveSuccess}</span>
-            </div>
-          )}
-
-          {saveError && (
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--radius-md)', padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#991b1b', fontSize: '0.85rem', marginBottom: '1rem' }}>
-              <AlertCircle size={16} />
-              <span>{saveError}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div>
-              <label style={{ fontSize: '0.825rem', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>Nama Lengkap</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', fontSize: '0.9rem' }}
-                required
-              />
-            </div>
-
-            <div>
-              <label style={{ fontSize: '0.825rem', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>Email Akun (Terkunci)</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="email"
-                  value={user?.email || ''}
-                  disabled
-                  style={{ width: '100%', padding: '0.65rem 0.85rem 0.65rem 2.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', background: 'var(--secondary-100)', color: 'var(--secondary-500)', fontSize: '0.9rem' }}
-                />
-                <Mail size={16} color="#94a3b8" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: '0.825rem', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>Nomor Telepon / WhatsApp</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="tel"
-                  placeholder="0812xxxxxxxx"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  style={{ width: '100%', padding: '0.65rem 0.85rem 0.65rem 2.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', fontSize: '0.9rem' }}
-                />
-                <Phone size={16} color="#94a3b8" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: '0.825rem', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>Alamat Pengiriman Obat</label>
-              <div style={{ position: 'relative' }}>
-                <textarea
-                  rows={3}
-                  placeholder="Masukkan alamat pengiriman lengkap..."
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  style={{ width: '100%', padding: '0.65rem 0.85rem 0.65rem 2.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', fontSize: '0.9rem' }}
-                />
-                <MapPin size={16} color="#94a3b8" style={{ position: 'absolute', left: '0.75rem', top: '0.75rem' }} />
-              </div>
-            </div>
-
-            <Button
-              variant="primary"
-              size="md"
-              type="submit"
-              disabled={isSaving}
-              icon={<Save size={16} />}
-              style={{ marginTop: '0.5rem', alignSelf: 'flex-start' }}
+      {/* Main Container */}
+      <div className="container" style={{ marginTop: '-1.5rem', position: 'relative', zIndex: 10 }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          
+          {/* Quick Order History Banner Shortcut */}
+          {onNavigateToOrders && (
+            <div
+              style={{
+                background: '#ffffff',
+                borderRadius: '1rem',
+                border: '1px solid var(--border-light)',
+                padding: '1.25rem 1.5rem',
+                boxShadow: 'var(--shadow-sm)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '1rem',
+              }}
             >
-              {isSaving ? 'Menyimpan...' : 'Simpan Perubahan Profil'}
-            </Button>
-          </form>
-        </div>
-
-        {/* Right Column: Order History */}
-        <div style={{ background: '#ffffff', borderRadius: 'var(--radius-xl)', padding: '2rem', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Package size={18} color="#0284c7" />
-            Riwayat Pesanan Obat Anda
-          </h3>
-
-          {loadingOrders ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary-500)' }}>
-              Memuat data pesanan...
-            </div>
-          ) : orders.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'var(--secondary-50)', borderRadius: 'var(--radius-lg)' }}>
-              <Package size={36} color="#94a3b8" style={{ marginBottom: '0.5rem' }} />
-              <div style={{ fontWeight: 600, color: 'var(--secondary-700)' }}>Belum ada riwayat pesanan</div>
-              <p style={{ fontSize: '0.825rem', color: 'var(--secondary-500)', marginTop: '0.25rem' }}>
-                Pesanan obat Anda dari katalog akan tercatat di sini.
-              </p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '420px', overflowY: 'auto' }}>
-              {orders.map((ord: any) => (
-                <div key={ord.id} style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-lg)', padding: '1rem', background: 'var(--secondary-50)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--secondary-700)' }}>
-                      Order #{ord.id.slice(-6).toUpperCase()}
-                    </span>
-                    <span className={`badge ${ord.status === 'CONFIRMED' ? 'badge-bebas' : ord.status === 'PROCESSING' ? 'badge-terbatas' : 'badge-suplemen'}`}>
-                      {ord.status}
-                    </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                <div
+                  style={{
+                    width: '2.75rem',
+                    height: '2.75rem',
+                    borderRadius: '0.75rem',
+                    background: '#eff6ff',
+                    color: '#2563eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Package size={22} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--secondary-900)' }}>
+                    Ingin Memeriksa Riwayat Pesanan?
                   </div>
-
-                  <div style={{ fontSize: '0.85rem', color: 'var(--secondary-600)', marginBottom: '0.5rem' }}>
-                    {ord.items?.map((it: any) => (
-                      <div key={it.id} style={{ display: 'flex', justifyContent: 'space-between', margin: '0.2rem 0' }}>
-                        <span>• {it.medicine?.name} ({it.quantity}x)</span>
-                        <span style={{ fontWeight: 600 }}>{formatIDR(it.subtotal)}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-light)', paddingTop: '0.5rem', marginTop: '0.5rem', fontSize: '0.825rem' }}>
-                    <span style={{ color: 'var(--secondary-500)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Clock size={13} />
-                      {new Date(ord.createdAt).toLocaleDateString('id-ID')}
-                    </span>
-                    <span style={{ fontWeight: 800, color: 'var(--primary-700)', fontSize: '0.95rem' }}>
-                      Total: {formatIDR(ord.totalAmount)}
-                    </span>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--secondary-500)' }}>
+                    Riwayat dan pelacakan pesanan Anda kini tersaji rapi di menu <strong>Pesanan Saya</strong> pada navbar atas.
                   </div>
                 </div>
-              ))}
+              </div>
+
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<ArrowRight size={15} />}
+                onClick={onNavigateToOrders}
+                style={{ fontWeight: 600 }}
+              >
+                Buka Pesanan Saya
+              </Button>
             </div>
           )}
+
+          {/* Edit Profile Card Form */}
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '1rem',
+              border: '1px solid var(--border-light)',
+              boxShadow: 'var(--shadow-sm)',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #064e3b, #0c4a6e)',
+                padding: '1.25rem 1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+              }}
+            >
+              <div
+                style={{
+                  width: '2.5rem',
+                  height: '2.5rem',
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <User size={18} color="#ffffff" />
+              </div>
+              <div>
+                <h3 style={{ color: '#ffffff', margin: 0, fontWeight: 700, fontSize: '1.1rem' }}>
+                  Edit Data Profil
+                </h3>
+                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', margin: 0 }}>
+                  Kelola informasi kontak dan alamat pengiriman obat untuk mempermudah checkout
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSave} style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Nama Lengkap */}
+              <div>
+                <label style={{ fontSize: '0.825rem', fontWeight: 700, color: '#374151', display: 'block', marginBottom: '0.5rem' }}>
+                  Nama Lengkap *
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <User size={16} color="#94a3b8" style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)' }} />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    style={inputStyle}
+                    placeholder="Masukkan nama lengkap"
+                  />
+                </div>
+              </div>
+
+              {/* Email (Readonly) */}
+              <div>
+                <label style={{ fontSize: '0.825rem', fontWeight: 700, color: '#374151', display: 'block', marginBottom: '0.5rem' }}>
+                  Alamat Email <span style={{ color: '#94a3b8', fontWeight: 400 }}>(terkunci & terhubung akun)</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <Mail size={16} color="#94a3b8" style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)' }} />
+                  <input
+                    type="email"
+                    value={user?.email || ''}
+                    disabled
+                    style={{ ...inputStyle, background: '#f8fafc', color: '#94a3b8', cursor: 'not-allowed' }}
+                  />
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label style={{ fontSize: '0.825rem', fontWeight: 700, color: '#374151', display: 'block', marginBottom: '0.5rem' }}>
+                  Nomor Telepon / WhatsApp
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <Phone size={16} color="#94a3b8" style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)' }} />
+                  <input
+                    type="tel"
+                    placeholder="Contoh: 081234567890"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem', display: 'block' }}>
+                  Digunakan untuk konfirmasi pesanan dan koordinasi kurir pengiriman.
+                </span>
+              </div>
+
+              {/* Shipping Address */}
+              <div>
+                <label style={{ fontSize: '0.825rem', fontWeight: 700, color: '#374151', display: 'block', marginBottom: '0.5rem' }}>
+                  Alamat Pengiriman Utama
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <MapPin size={16} color="#94a3b8" style={{ position: 'absolute', left: '0.875rem', top: '0.875rem' }} />
+                  <textarea
+                    rows={3}
+                    placeholder="Nama jalan, nomor rumah, RT/RW, kelurahan/kecamatan, kota dan kode pos..."
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    style={{ ...inputStyle, resize: 'vertical' }}
+                  />
+                </div>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem', display: 'block' }}>
+                  Alamat ini otomatis menjadi alamat default setiap kali Anda checkout.
+                </span>
+              </div>
+
+              {/* Submit Button */}
+              <div style={{ paddingTop: '0.75rem', borderTop: '1px solid var(--border-light)' }}>
+                <Button
+                  variant="primary"
+                  size="md"
+                  type="submit"
+                  disabled={isSaving}
+                  icon={<Save size={16} />}
+                  style={{ width: '100%', justifyContent: 'center', fontWeight: 700 }}
+                >
+                  {isSaving ? 'Menyimpan Perubahan...' : 'Simpan Perubahan Profil'}
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          {/* Account Security & Verification Badge Info */}
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '1rem',
+              border: '1px solid var(--border-light)',
+              padding: '1.25rem 1.5rem',
+              boxShadow: 'var(--shadow-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <div
+                style={{
+                  width: '2.5rem',
+                  height: '2.5rem',
+                  borderRadius: '0.65rem',
+                  background: '#f0fdf4',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#059669',
+                }}
+              >
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--secondary-900)' }}>
+                  Keamanan & Status Privasi Akun
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--secondary-500)' }}>
+                  Data medis dan resep Anda dilindungi enkripsi standar kesehatan privasi pasien.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span
+                style={{
+                  padding: '0.3rem 0.75rem',
+                  borderRadius: '999px',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  background: '#f0fdf4',
+                  color: '#059669',
+                  border: '1px solid #bbf7d0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <Star size={13} /> Member Terverifikasi
+              </span>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

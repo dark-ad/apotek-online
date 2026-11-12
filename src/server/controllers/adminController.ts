@@ -1,3 +1,4 @@
+import { notifyLowStock } from '../services/telegramService';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { prisma } from '../../lib/db';
 import { sendJson, parseJsonBody, requireAuth, parseIntSafe } from '../utils';
@@ -303,6 +304,21 @@ export async function handleAdminUpdateMedicine(
     include: {
       category: { select: { id: true, name: true } },
     },
+  });
+
+  // Telegram Notification: Check Low Stock
+  Promise.resolve().then(async () => {
+    try {
+      await notifyLowStock({
+        id: updated.id,
+        name: updated.name,
+        stock: updated.stock,
+        unit: updated.unit,
+        category: updated.category?.name,
+      });
+    } catch (err: any) {
+      console.warn('[Telegram Admin Stock Hook]', err?.message);
+    }
   });
 
   sendJson(res, 200, {

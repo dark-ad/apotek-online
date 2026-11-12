@@ -14,8 +14,7 @@ import {
   EyeOff, 
   ShieldCheck, 
   AlertCircle,
-  CheckCircle2,
-  Sparkles
+  CheckCircle2
 } from 'lucide-react';
 
 interface AuthModalProps {
@@ -61,24 +60,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleModeChange = (newMode: 'login' | 'register') => {
     setMode(newMode);
     resetForm();
-  };
-
-  const handleQuickLogin = async (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword('password123');
-    setErrorMsg(null);
-    setFieldErrors({});
-
-    const res = await login(demoEmail, 'password123');
-    if (res.success) {
-      setSuccessMsg('Login berhasil!');
-      setTimeout(() => {
-        onClose();
-        if (onLoginSuccess) onLoginSuccess(demoEmail.includes('admin') ? 'ADMIN' : demoEmail.includes('staff') ? 'STAFF' : 'CUSTOMER');
-      }, 500);
-    } else {
-      setErrorMsg(res.message || 'Login gagal.');
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -174,42 +155,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 'var(--radius-md)', padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#166534', fontSize: '0.85rem', marginBottom: '1rem' }}>
             <CheckCircle2 size={18} style={{ flexShrink: 0 }} />
             <span>{successMsg}</span>
-          </div>
-        )}
-
-        {/* Quick Role Login Chips for Testing */}
-        {mode === 'login' && (
-          <div style={{ background: 'var(--secondary-50)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '0.75rem', marginBottom: '1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--secondary-600)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              <Sparkles size={13} color="#8b5cf6" />
-              <span>Login Demo Cepat (1 Klik):</span>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-              <button
-                type="button"
-                className="btn btn-sm btn-secondary"
-                style={{ fontSize: '0.75rem', padding: '0.3rem 0.55rem', borderLeft: '3px solid #8b5cf6' }}
-                onClick={() => handleQuickLogin('admin@apoteksehat-ai.com')}
-              >
-                👑 Admin
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm btn-secondary"
-                style={{ fontSize: '0.75rem', padding: '0.3rem 0.55rem', borderLeft: '3px solid #0284c7' }}
-                onClick={() => handleQuickLogin('staff.apoteker@apoteksehat-ai.com')}
-              >
-                🩺 Staf Apoteker
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm btn-secondary"
-                style={{ fontSize: '0.75rem', padding: '0.3rem 0.55rem', borderLeft: '3px solid #10b981' }}
-                onClick={() => handleQuickLogin('budi.santoso@gmail.com')}
-              >
-                🛍️ Customer
-              </button>
-            </div>
           </div>
         )}
 

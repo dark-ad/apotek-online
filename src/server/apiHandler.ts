@@ -35,6 +35,11 @@ import {
 } from './controllers/staffController';
 import { handleGetCustomerOrders } from './controllers/customerController';
 import {
+  handleGetTelegramStatus,
+  handleTestTelegramNotification,
+  handleUpdateTelegramConfig,
+} from './controllers/telegramController';
+import {
   handleGetCategories,
   handleGetMedicines,
   handleGetMedicineById,
@@ -53,7 +58,7 @@ import {
   handleMockPayment,
   handleUploadPrescription,
 } from './controllers/orderController';
-import { handleAiChat } from './controllers/aiController';
+import { handleAiChat, handleAiDataSummary } from './controllers/aiController';
 
 export * from './types';
 export * from './utils';
@@ -197,6 +202,22 @@ export async function handleApiRequest(
       return true;
     }
 
+    // Admin Telegram Notification Management
+    if (pathname === '/api/admin/telegram/status' && method === 'GET') {
+      await handleGetTelegramStatus(req, res);
+      return true;
+    }
+
+    if (pathname === '/api/admin/telegram/test' && method === 'POST') {
+      await handleTestTelegramNotification(req, res);
+      return true;
+    }
+
+    if (pathname === '/api/admin/telegram/config' && method === 'PUT') {
+      await handleUpdateTelegramConfig(req, res);
+      return true;
+    }
+
     // -----------------------------------------------------------------
     // 3. Staff Routes (Staff & Admin)
     // -----------------------------------------------------------------
@@ -328,6 +349,11 @@ export async function handleApiRequest(
     if (pathname === '/api/ai/chat' && method === 'POST') {
       if (!checkRateLimit(req, res, 'ai_chat', RATE_LIMIT_CONFIGS.AI_CHAT)) return true;
       await handleAiChat(req, res);
+      return true;
+    }
+
+    if (pathname === '/api/ai/summary' && method === 'GET') {
+      await handleAiDataSummary(req, res);
       return true;
     }
 

@@ -1,0 +1,255 @@
+﻿/* ==========================================================================
+   DARK MODE SYSTEM - Apotek Sehat AI
+   ========================================================================== */
+
+[data-theme="dark"],
+html.dark {
+  /* Surfaces & Backgrounds - Sleek Obsidian & Deep Slate */
+  --bg-main: #0b0f19;
+  --bg-surface: #111827;
+  --bg-card: #151f32;
+  --bg-card-hover: #1c2842;
+  --border-light: #1f2a3d;
+  --border-subtle: #172033;
+
+  /* Invert secondary text scale for dark mode */
+  --secondary-50: #0f172a;
+  --secondary-100: #1e293b;
+  --secondary-200: #334155;
+  --secondary-300: #475569;
+  --secondary-400: #94a3b8;
+  --secondary-500: #cbd5e1;
+  --secondary-600: #e2e8f0;
+  --secondary-700: #f1f5f9;
+  --secondary-800: #f8fafc;
+  --secondary-900: #ffffff;
+  --secondary-950: #ffffff;
+
+  /* Glassmorphism for Dark Mode */
+  --glass-bg: rgba(17, 24, 39, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+
+  /* Shadows tuned for Dark Surfaces */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 8px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 20px -3px rgba(0, 0, 0, 0.6), 0 4px 8px -4px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 30px -5px rgba(0, 0, 0, 0.7), 0 8px 12px -6px rgba(0, 0, 0, 0.5);
+
+  /* Primary & Accent Tint Adjustments for Dark Mode */
+  --primary-50: rgba(16, 185, 129, 0.12);
+  --primary-100: rgba(16, 185, 129, 0.2);
+  --accent-50: rgba(14, 165, 233, 0.12);
+  --accent-100: rgba(14, 165, 233, 0.2);
+
+  /* Golongan Obat Badges in Dark Mode */
+  --gol-bebas-bg: rgba(16, 185, 129, 0.18);
+  --gol-bebas-text: #6ee7b7;
+  --gol-bebas-border: rgba(16, 185, 129, 0.35);
+
+  --gol-terbatas-bg: rgba(14, 165, 233, 0.18);
+  --gol-terbatas-text: #7dd3fc;
+  --gol-terbatas-border: rgba(14, 165, 233, 0.35);
+
+  --gol-keras-bg: rgba(239, 68, 68, 0.18);
+  --gol-keras-text: #fca5a5;
+  --gol-keras-border: rgba(239, 68, 68, 0.35);
+}
+
+/* Body Background in Dark Mode */
+[data-theme="dark"] body,
+html.dark body {
+  background-color: var(--bg-main);
+  background-image: 
+    radial-gradient(at 15% 15%, rgba(16, 185, 129, 0.08) 0px, transparent 50%),
+    radial-gradient(at 85% 25%, rgba(14, 165, 233, 0.08) 0px, transparent 50%),
+    radial-gradient(at 50% 85%, rgba(139, 92, 246, 0.06) 0px, transparent 50%);
+  color: var(--secondary-700);
+}
+
+/* Navbar in Dark Mode */
+[data-theme="dark"] .navbar,
+html.dark .navbar {
+  background: rgba(11, 15, 25, 0.88) !important;
+  border-bottom-color: var(--border-light) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Theme Toggle Button Styling */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition-fast);
+}
+
+.theme-toggle-btn:hover {
+  transform: translateY(-1px) scale(1.05);
+}
+
+.theme-toggle-btn .sun-icon {
+  color: #fbbf24;
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.6));
+  animation: spinSlow 8s linear infinite;
+}
+
+.theme-toggle-btn .moon-icon {
+  color: #0284c7;
+  transition: transform 0.2s ease;
+}
+
+.theme-toggle-btn:hover .moon-icon {
+  transform: rotate(-15deg);
+  color: #0ea5e9;
+}
+
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+[data-theme="dark"] .theme-toggle-btn {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: #334155;
+  color: #fbbf24;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
+}
+
+[data-theme="dark"] .theme-toggle-btn:hover {
+  background: rgba(40, 53, 76, 0.9);
+  border-color: #475569;
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.35);
+}
+
+/* Hero & Floating Cards */
+[data-theme="dark"] .hero-main-card,
+[data-theme="dark"] .floating-stat-card {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-light) !important;
+}
+
+/* Category & Product Cards */
+[data-theme="dark"] .category-card {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-light) !important;
+}
+[data-theme="dark"] .category-card:hover {
+  background: var(--bg-card-hover) !important;
+  border-color: var(--primary-500) !important;
+}
+
+[data-theme="dark"] .product-card {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-light) !important;
+}
+[data-theme="dark"] .product-card:hover {
+  background: var(--bg-card) !important;
+  border-color: var(--primary-500) !important;
+}
+
+[data-theme="dark"] .role-card {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-light) !important;
+}
+
+/* Secondary Button in Dark Mode */
+[data-theme="dark"] .btn-secondary {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+[data-theme="dark"] .btn-secondary:hover {
+  background: #27354f;
+  border-color: #475569;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .btn-ghost {
+  color: var(--secondary-600);
+}
+[data-theme="dark"] .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+/* Forms, Inputs, Selects, and Textareas */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: #111827 !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: #64748b !important;
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+  border-color: var(--primary-500) !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Dropdown User Menu & Overlays */
+[data-theme="dark"] .user-dropdown-menu,
+[data-theme="dark"] .notification-dropdown-panel {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-light) !important;
+  box-shadow: var(--shadow-xl) !important;
+}
+
+[data-theme="dark"] .mobile-nav-drawer {
+  background: var(--bg-surface) !important;
+  border-top-color: var(--border-light) !important;
+}
+
+/* Modals & Dialogs */
+[data-theme="dark"] .modal-box,
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .cart-drawer-content {
+  background-color: var(--bg-surface) !important;
+  color: var(--secondary-800);
+  border-color: var(--border-light) !important;
+}
+
+/* Generic Fallback for Inline White Surfaces in Dark Mode */
+[data-theme="dark"] div[style*="background: #ffffff"],
+[data-theme="dark"] div[style*="background: rgb(255, 255, 255)"],
+[data-theme="dark"] div[style*="background-color: #ffffff"],
+[data-theme="dark"] div[style*="backgroundColor: #ffffff"] {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-light) !important;
+  color: var(--secondary-800);
+}
+
+/* Tables in Dashboards */
+[data-theme="dark"] table {
+  color: var(--secondary-700);
+}
+[data-theme="dark"] th {
+  background-color: #162032 !important;
+  color: var(--secondary-800) !important;
+  border-color: var(--border-light) !important;
+}
+[data-theme="dark"] td {
+  border-color: var(--border-subtle) !important;
+}
+[data-theme="dark"] tr:hover td {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Prescription Banner Gradient in Dark Mode */
+[data-theme="dark"] .prescription-banner-card {
+  background: linear-gradient(135deg, #064e3b 0%, #0369a1 100%) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+/* Smooth transition for theme switching */
+html, body, .navbar, .product-card, .category-card, .btn, .hero-main-card, .floating-stat-card {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease, box-shadow 0.25s ease;
+}

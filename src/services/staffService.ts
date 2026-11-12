@@ -56,7 +56,7 @@ export interface StaffMedicine {
 }
 
 const getAuthHeaders = (): Record<string, string> => {
-  const token = localStorage.getItem('apotek_token');
+  const token = localStorage.getItem('apotek_auth_token') || localStorage.getItem('apotek_token');
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),

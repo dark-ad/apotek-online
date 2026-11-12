@@ -327,7 +327,7 @@ export const CartDrawerModal: React.FC<CartDrawerModalProps> = ({
                         {/* Medicine Info */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
                           <img
-                            src={item.medicine.image || 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=80'}
+                            src={item.medicine.image || '/images/medicines/paracetamol-500mg.jpg'}
                             alt={item.medicine.name}
                             style={{
                               width: '48px',

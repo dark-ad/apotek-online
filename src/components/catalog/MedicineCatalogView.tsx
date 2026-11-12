@@ -321,11 +321,12 @@ export const MedicineCatalogView: React.FC<MedicineCatalogViewProps> = ({
       {/* 2. Loading State (Skeleton Grid) */}
       {loading && (
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-            gap: '1.5rem',
-            marginBottom: '2.5rem',
+            className="catalog-products-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+              gap: '1.5rem',
+              marginBottom: '2.5rem',
           }}
         >
           {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
@@ -406,6 +407,7 @@ export const MedicineCatalogView: React.FC<MedicineCatalogViewProps> = ({
           </div>
 
           <div
+            className="catalog-products-grid"
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
@@ -427,6 +429,7 @@ export const MedicineCatalogView: React.FC<MedicineCatalogViewProps> = ({
           {/* Pagination Controls */}
           {pagination.totalPages > 1 && (
             <div
+              className="pagination-controls"
               style={{
                 display: 'flex',
                 justifyContent: 'center',

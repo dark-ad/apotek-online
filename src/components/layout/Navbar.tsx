@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Button } from '../common/Button';
 import { NotificationDropdown } from '../common/NotificationDropdown';
 import {
   Pill,
-  Sparkles,
   ShoppingCart,
-  FileUp,
   LogIn,
   LogOut,
   User,
@@ -17,13 +16,14 @@ import {
   Package,
   Menu,
   X,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 interface NavbarProps {
   cartCount: number;
   onOpenCartModal: () => void;
   onOpenAuthModal: () => void;
-  onOpenUploadModal: () => void;
   onNavigate: (
     view: 'home' | 'catalog' | 'profile' | 'staff-dashboard' | 'admin-dashboard' | 'checkout' | 'my-orders' | 'order-detail',
     data?: any
@@ -35,11 +35,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   cartCount,
   onOpenCartModal,
   onOpenAuthModal,
-  onOpenUploadModal,
   onNavigate,
   currentView,
 }) => {
   const { user, isAuthenticated, logout } = useAuth();
+  const { toggleTheme, isDark } = useTheme();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -123,34 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   Katalog Obat
                 </a>
               </li>
-              <li>
-                <a
-                  href="#ai-assistant"
-                  className="nav-link"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigateAndClose('catalog');
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
-                >
-                  <Sparkles size={15} color="#8b5cf6" />
-                  <span>AI Assistant</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#upload-resep"
-                  className="nav-link"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onOpenUploadModal();
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
-                >
-                  <FileUp size={15} color="#059669" />
-                  <span>Upload Resep</span>
-                </a>
-              </li>
+
               {isAuthenticated && user && (
                 <li>
                   <a
@@ -199,6 +172,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Notification Center Dropdown */}
             <NotificationDropdown onNavigate={navigateAndClose} />
 
+            {/* Theme Toggle Button (Light/Dark Mode) */}
+            <button
+              id="theme-toggle-btn"
+              className="btn btn-secondary btn-icon-only theme-toggle-btn"
+              onClick={toggleTheme}
+              title={isDark ? 'Beralih ke Mode Terang (Light Mode)' : 'Beralih ke Mode Gelap (Dark Mode)'}
+              aria-label={isDark ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
+            >
+              {isDark ? (
+                <Sun size={19} className="sun-icon" />
+              ) : (
+                <Moon size={19} className="moon-icon" />
+              )}
+            </button>
+
             {/* Cart Button */}
             <button
               className="btn btn-secondary btn-icon-only"
@@ -243,7 +231,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',
-                    background: '#ffffff',
+                    background: 'var(--bg-surface)',
                     border: '1px solid var(--border-light)',
                     borderRadius: 'var(--radius-md)',
                     padding: '0.4rem 0.75rem',
@@ -449,6 +437,42 @@ export const Navbar: React.FC<NavbarProps> = ({
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <li>
                 <button
+                  onClick={toggleTheme}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '0.75rem 1rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-light)',
+                    background: 'var(--bg-surface)',
+                    color: 'var(--secondary-800)',
+                    fontSize: '0.95rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    {isDark ? <Sun size={18} color="#fbbf24" /> : <Moon size={18} color="#0284c7" />}
+                    <strong>Tema Aplikasi</strong>
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '0.8rem',
+                      padding: '0.2rem 0.65rem',
+                      borderRadius: 'var(--radius-full)',
+                      background: isDark ? 'rgba(251, 191, 36, 0.15)' : 'var(--secondary-100)',
+                      color: isDark ? '#fbbf24' : 'var(--secondary-700)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {isDark ? 'Mode Gelap ðŸŒ™' : 'Mode Terang â˜€ï¸'}
+                  </span>
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => navigateAndClose('catalog')}
                   style={{
                     width: '100%',
@@ -466,31 +490,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   Katalog Obat
                 </button>
               </li>
-              <li>
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    onOpenUploadModal();
-                  }}
-                  style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '0.75rem 1rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: 'none',
-                    background: 'transparent',
-                    color: 'var(--secondary-700)',
-                    fontSize: '0.95rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <FileUp size={16} color="#059669" />
-                  Upload Resep Dokter
-                </button>
-              </li>
+
               {isAuthenticated && user && (
                 <li>
                   <button

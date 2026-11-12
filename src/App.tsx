@@ -2,16 +2,14 @@ import React, { useState } from 'react';
 import { MEDICINES_DATA } from './data/mockData';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider, useCart } from './context/CartContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { HeroSection } from './components/home/HeroSection';
 import { CategoryGrid } from './components/home/CategoryGrid';
 import { FeaturedProducts } from './components/home/FeaturedProducts';
 import { AIAssistantTeaser } from './components/home/AIAssistantTeaser';
-import { PrescriptionBanner } from './components/home/PrescriptionBanner';
 import { RoleFlowSection } from './components/home/RoleFlowSection';
-import { Modal } from './components/common/Modal';
-import { Button } from './components/common/Button';
 import { AuthModal } from './components/auth/AuthModal';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { CustomerProfileView } from './components/dashboard/CustomerProfileView';
@@ -30,8 +28,6 @@ import { ToastProvider, useToast } from './context/ToastContext';
 import { ToastContainer } from './components/common/ToastContainer';
 import { NotificationProvider } from './context/NotificationContext';
 import { 
-  CheckCircle, 
-  UploadCloud,
   Sparkles
 } from 'lucide-react';
 
@@ -64,8 +60,6 @@ const AppInner: React.FC = () => {
   // Modals state
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
-  const [isUploadOpen, setIsUploadOpen] = useState<boolean>(false);
-  const [uploadSuccess, setUploadSuccess] = useState<boolean>(false);
   const [isAiChatOpen, setIsAiChatOpen] = useState<boolean>(false);
 
   // Cart operations via server-side CartContext with Toast feedback
@@ -134,7 +128,6 @@ const AppInner: React.FC = () => {
         cartCount={totalCount}
         onOpenCartModal={() => setIsCartOpen(true)}
         onOpenAuthModal={() => setIsAuthOpen(true)}
-        onOpenUploadModal={() => setIsUploadOpen(true)}
         onNavigate={handleNavigate}
         currentView={currentView}
       />
@@ -150,7 +143,6 @@ const AppInner: React.FC = () => {
               const aiSec = document.getElementById('ai-assistant');
               if (aiSec) aiSec.scrollIntoView({ behavior: 'smooth' });
             }}
-            onOpenUploadModal={() => setIsUploadOpen(true)}
           />
 
           <CategoryGrid
@@ -177,9 +169,7 @@ const AppInner: React.FC = () => {
             onOpenChat={() => setIsAiChatOpen(true)}
           />
 
-          <PrescriptionBanner
-            onOpenUploadModal={() => setIsUploadOpen(true)}
-          />
+
 
           <RoleFlowSection
             currentRole="pembeli"
@@ -268,7 +258,7 @@ const AppInner: React.FC = () => {
           onGoHome={() => setCurrentView('home')}
           onOpenLogin={() => setIsAuthOpen(true)}
         >
-          <CustomerProfileView />
+          <CustomerProfileView onNavigateToOrders={() => setCurrentView('my-orders')} />
         </ProtectedRoute>
       )}
 
@@ -336,82 +326,25 @@ const AppInner: React.FC = () => {
         />
       )}
 
-      {/* Quick Upload Resep Modal from Home */}
-      <Modal
-        isOpen={isUploadOpen}
-        onClose={() => {
-          setIsUploadOpen(false);
-          setUploadSuccess(false);
-        }}
-        title="Upload Resep Dokter"
-      >
-        {uploadSuccess ? (
-          <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
-            <div style={{ color: '#059669', marginBottom: '1rem' }}>
-              <CheckCircle size={48} style={{ margin: '0 auto' }} />
-            </div>
-            <h4 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--secondary-900)', marginBottom: '0.5rem' }}>
-              Resep Berhasil Diunggah!
-            </h4>
-            <p style={{ color: 'var(--secondary-600)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-              Staf apoteker kami akan memverifikasi resep Anda. Anda juga dapat langsung menambahkan obat ke keranjang dan mengunggah resep pada halaman checkout.
-            </p>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => {
-                setIsUploadOpen(false);
-                setUploadSuccess(false);
-                setCurrentView('catalog');
-              }}
-            >
-              Lanjut ke Katalog Obat
-            </Button>
-          </div>
-        ) : (
-          <div>
-            <p style={{ color: 'var(--secondary-600)', fontSize: '0.875rem', marginBottom: '1rem' }}>
-              Unggah foto resep dokter Anda (JPG, PNG, atau PDF). Apoteker kami akan memvalidasi keaslian resep dan menyiapkan pesanan Anda sesuai dosis.
-            </p>
-            <div
-              style={{
-                border: '2px dashed var(--secondary-200)',
-                borderRadius: 'var(--radius-lg)',
-                padding: '2rem 1rem',
-                textAlign: 'center',
-                cursor: 'pointer',
-                background: 'var(--secondary-50)',
-                marginBottom: '1rem',
-              }}
-              onClick={() => setUploadSuccess(true)}
-            >
-              <UploadCloud size={36} color="var(--primary-600)" style={{ margin: '0 auto 0.5rem auto' }} />
-              <p style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--secondary-800)', margin: '0 0 0.25rem 0' }}>
-                Klik untuk Memilih File Resep
-              </p>
-              <span style={{ fontSize: '0.75rem', color: 'var(--secondary-500)' }}>
-                Mendukung PNG, JPG, PDF (Maks. 10MB)
-              </span>
-            </div>
-          </div>
-        )}
-      </Modal>
+
     </div>
   );
 };
 
 export const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <NotificationProvider>
-          <CartProvider>
-            <AppInner />
-            <ToastContainer />
-          </CartProvider>
-        </NotificationProvider>
-      </ToastProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <NotificationProvider>
+            <CartProvider>
+              <AppInner />
+              <ToastContainer />
+            </CartProvider>
+          </NotificationProvider>
+        </ToastProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 

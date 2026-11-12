@@ -44,7 +44,7 @@ export const Footer: React.FC = () => {
               <li><a href="#alur-role">Portal Staf Apotek & Apoteker</a></li>
               <li><a href="#alur-role">Portal Admin & Manajemen</a></li>
               <li><a href="#ai-assistant">AI Health Assistant Guide</a></li>
-              <li><a href="#upload-resep">Panduan Upload Resep</a></li>
+
               <li><a href="#">Ketentuan Golongan Obat BPOM</a></li>
             </ul>
           </div>

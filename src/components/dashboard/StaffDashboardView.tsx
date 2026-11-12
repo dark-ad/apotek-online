@@ -567,7 +567,7 @@ export const StaffDashboardView: React.FC = () => {
       {activeTab === 'overview' && (
         <div>
           {/* Top 4 Metrics */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+          <div className="dashboard-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
             <div style={{ background: '#ffffff', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-lg)', padding: '1.25rem', boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--secondary-500)', fontSize: '0.825rem', fontWeight: 600 }}>
                 <span>Total Antrean Masuk</span>
@@ -1430,7 +1430,7 @@ export const StaffDashboardView: React.FC = () => {
             </p>
 
             {/* Action Select */}
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+            <div className="stock-action-btns" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
               {[
                 { key: 'ADD', label: '+ Tambah Stok', icon: <Plus size={14} /> },
                 { key: 'SUBTRACT', label: '- Kurangi Stok', icon: <Minus size={14} /> },

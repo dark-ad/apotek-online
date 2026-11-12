@@ -1,3 +1,8 @@
+import {
+  notifyOrderCreated,
+  notifyPrescriptionReviewRequired,
+  notifyLowStock,
+} from '../services/telegramService';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { prisma } from '../../lib/db';
 import { sendJson, parseJsonBody, requireAuth } from '../utils';
@@ -79,22 +84,12 @@ export async function handleCheckout(req: IncomingMessage, res: ServerResponse):
     return;
   }
 
-  // 3. Business Rule 1 & 2: Prescription validation
-  if (needsPrescription && !prescriptionUrl) {
-    sendJson(res, 400, {
-      success: false,
-      message: 'Pesanan ini mengandung obat yang memerlukan resep dokter. Silakan upload resep terlebih dahulu.',
-      errors: {
-        prescription: 'Upload resep dokter wajib untuk obat yang memerlukan resep.',
-      },
-    });
-    return;
-  }
+  // 3. Prescription is optional: saved if uploaded, but does not block order creation
 
   // 4. Create Order + OrderItems in a transaction (atomicity)
   //    Business Rule 4: price snapshot in OrderItem
   //    Business Rule 7: initial status
-  const orderStatus = needsPrescription ? 'PENDING_VERIFICATION' : 'PENDING_PAYMENT';
+  const orderStatus = (needsPrescription && prescriptionUrl) ? 'PENDING_VERIFICATION' : 'PENDING_PAYMENT';
 
   const order = await prisma.$transaction(async (tx) => {
     // Create the order
@@ -144,10 +139,50 @@ export async function handleCheckout(req: IncomingMessage, res: ServerResponse):
     return newOrder;
   });
 
+  // Post-transaction Non-blocking Telegram Notification Dispatch
+  Promise.resolve().then(async () => {
+    try {
+      await notifyOrderCreated({
+        id: order.id,
+        shortId: order.id.slice(-8).toUpperCase(),
+        totalAmount: order.totalAmount,
+        itemCount: order.items.length,
+        status: order.status,
+        requiresPrescription: order.requiresPrescription,
+        prescriptionUrl: order.prescriptionUrl,
+        customerName: customer.name,
+        createdAt: order.createdAt,
+      });
+
+      if (order.requiresPrescription && order.prescriptionUrl) {
+        await notifyPrescriptionReviewRequired({
+          id: order.id,
+          shortId: order.id.slice(-8).toUpperCase(),
+          customerName: customer.name,
+          totalAmount: order.totalAmount,
+          createdAt: order.createdAt,
+        });
+      }
+
+      // Check low stock for purchased items
+      for (const item of cartItems) {
+        const remainingStock = item.medicine.stock - item.quantity;
+        await notifyLowStock({
+          id: item.medicine.id,
+          name: item.medicine.name,
+          stock: remainingStock,
+          unit: item.medicine.unit,
+        });
+      }
+    } catch (telegramErr: any) {
+      console.warn('[Telegram Checkout Hook]', telegramErr?.message);
+    }
+  });
+
   // Business Rule 6: return order ID
   sendJson(res, 201, {
     success: true,
-    message: needsPrescription
+    message: (needsPrescription && prescriptionUrl)
       ? `Pesanan #${order.id.slice(-8).toUpperCase()} berhasil dibuat. Menunggu verifikasi resep oleh apoteker.`
       : `Pesanan #${order.id.slice(-8).toUpperCase()} berhasil dibuat. Silakan lanjutkan pembayaran.`,
     data: {

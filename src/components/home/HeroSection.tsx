@@ -1,5 +1,4 @@
 import React from 'react';
-import { Button } from '../common/Button';
 import { 
   Sparkles, 
   Search, 
@@ -8,7 +7,6 @@ import {
   Truck, 
   Bot, 
   CheckCircle2, 
-  ArrowRight,
   Pill
 } from 'lucide-react';
 
@@ -16,14 +14,12 @@ interface HeroSectionProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onSelectAiPrompt: (promptIndex: number) => void;
-  onOpenUploadModal: () => void;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({
   searchQuery,
   onSearchChange,
   onSelectAiPrompt,
-  onOpenUploadModal
 }) => {
   return (
     <section className="hero-section">
@@ -66,15 +62,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 <Sparkles size={18} />
                 <span>Konsultasi AI Gratis</span>
               </a>
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={onOpenUploadModal}
-                icon={<ArrowRight size={18} />}
-                iconPosition="right"
-              >
-                Upload Resep Dokter
-              </Button>
             </div>
 
             {/* Trust Badges */}

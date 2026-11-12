@@ -1,13 +1,14 @@
-﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { sendAiMessage, AI_QUICK_PROMPTS, ChatMessage } from '../../services/aiService';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { sendAiMessage, getAiQuickPrompts, getAiAccessLabel, ChatMessage } from '../../services/aiService';
+import { useAuth, AuthUser } from '../../context/AuthContext';
 import {
   Bot,
+  RotateCcw,
   X,
   Send,
   Sparkles,
   ShieldAlert,
-  Trash2,
-  MessageCircle,
+    MessageCircle,
   ChevronDown,
   AlertCircle,
   Loader2,
@@ -32,27 +33,150 @@ function renderMarkdown(text: string): string {
     .replace(/\n/g, '<br/>');
 }
 
+// ─── Per-User Chat Isolation & Auto-Refresh (Anti-Numpuk) ───────────────────
+const MAX_ACTIVE_MESSAGES = 8; // Maksimal 8 pesan aktif (4 pasang Q&A) agar obrolan tidak menumpuk
+const SESSION_EXPIRY_MS = 5 * 60 * 1000; // 5 menit tidak aktif -> otomatis refresh sesi baru
+const AUTOREFRESH_KEY = 'apotek_ai_autorefresh_enabled';
+
+interface StoredChatPayload {
+  messages: any[];
+  lastActive: number;
+}
+
+function getInitialMessageForUser(user: AuthUser | null): ChatMessage {
+  if (user?.role === 'ADMIN') {
+    return {
+      id: `welcome-${user.id}`,
+      role: 'model',
+      text: `Halo **${user.name}**! Saya **Asisten AI Apotek Sehat AI** 👨‍⚕️💊\n\nAnda login sebagai **ADMIN** dengan **akses penuh**:\n- Seluruh katalog obat (termasuk produk nonaktif), stok & harga live\n- Seluruh data pengguna (ADMIN/STAFF/CUSTOMER) dan profilnya\n- Seluruh pesanan, transaksi, omzet, dan insight operasional\n- Konsultasi obat & panduan alur website\n\nAda data atau obat yang ingin Anda periksa hari ini, Kak **${user.name}**?`,
+      timestamp: new Date(),
+    };
+  }
+
+  if (user?.role === 'STAFF') {
+    return {
+      id: `welcome-${user.id}`,
+      role: 'model',
+      text: `Halo **${user.name}**! Saya **Asisten AI Apotek Sehat AI** 👨‍⚕️💊\n\nAnda login sebagai **STAFF** dengan **akses terbatas**:\n- Katalog obat, stok, harga & aturan resep\n- Antrean pesanan dan status verifikasi resep\n- Daftar pelanggan (nama, kontak tersamar, jumlah pesanan)\n- Insight operasional (omzet & data akun ADMIN hanya untuk Admin)\n\nAda yang bisa saya bantu, Kak **${user.name}**?`,
+      timestamp: new Date(),
+    };
+  }
+
+  if (user) {
+    return {
+      id: `welcome-${user.id}`,
+      role: 'model',
+      text: `Halo **${user.name}**! Saya **Asisten AI Apotek Sehat AI** 👨‍⚕️💊\n\nSaya siap membantu Anda:\n- Konsultasi gejala ringan & rekomendasi obat ready stock\n- Info obat resmi, harga & ketersediaan stok live\n- Cek keranjang belanja & status pesanan **milik Anda sendiri**\n- Panduan alur pemesanan dan resep dokter\n\n🔒 *Data pengguna lain dan data operasional toko tidak dapat diakses dari akun pelanggan.*\n\nAda yang bisa saya bantu hari ini, Kak **${user.name}**?`,
+      timestamp: new Date(),
+    };
+  }
+
+  return {
+    id: 'welcome-guest',
+    role: 'model',
+    text: 'Halo! Saya **Asisten AI Apotek Sehat AI** 👨‍⚕️💊\n\nSaya terhubung ke katalog obat apotek dan bisa membantu:\n- Konsultasi gejala ringan & rekomendasi obat ready stock\n- Menemukan produk obat, indikasi, harga & stok live\n- Informasi obat bebas & obat wajib resep dokter\n- Panduan alur website, upload resep dokter & pemesanan\n\n💡 *Silakan **Login** untuk memeriksa keranjang belanja & status pesanan Anda. Data pengguna lain hanya dapat diakses Admin/Staff.*\n\nAda yang bisa saya bantu hari ini?',
+    timestamp: new Date(),
+  };
+}
+
+function getChatStorageKey(userId?: string | null): string {
+  return `apotek_ai_chat_v3_${userId || 'guest'}`;
+}
+
+// Otomatis pangkas pesan lama agar obrolan tidak menumpuk (Anti-Numpuk Sliding Window)
+function pruneMessages(msgs: ChatMessage[], user: AuthUser | null): ChatMessage[] {
+  if (msgs.length <= MAX_ACTIVE_MESSAGES) return msgs;
+  const initial = getInitialMessageForUser(user);
+  const recent = msgs.slice(-(MAX_ACTIVE_MESSAGES - 1));
+  return [initial, ...recent.filter((m) => m.id !== initial.id)];
+}
+
+function saveChatForUser(userId: string | null | undefined, msgs: ChatMessage[], user: AuthUser | null) {
+  try {
+    const key = getChatStorageKey(userId);
+    const pruned = pruneMessages(msgs, user);
+    const payload: StoredChatPayload = {
+      messages: pruned,
+      lastActive: Date.now(),
+    };
+    localStorage.setItem(key, JSON.stringify(payload));
+  } catch (err) {
+    console.error('Failed to save chat history:', err);
+  }
+}
+
+function loadChatForUser(user: AuthUser | null): ChatMessage[] {
+  try {
+    const key = getChatStorageKey(user?.id);
+    const saved = localStorage.getItem(key);
+    const autoRefreshOn = localStorage.getItem(AUTOREFRESH_KEY) !== 'false';
+    if (saved) {
+      let rawMsgs: any[] = [];
+      let lastActive: number | undefined;
+
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          rawMsgs = parsed;
+        } else if (parsed && typeof parsed === 'object') {
+          rawMsgs = parsed.messages || [];
+          lastActive = parsed.lastActive;
+        }
+      } catch {}
+
+      // Jika Auto-Refresh aktif dan sesi terakhir sudah lebih dari SESSION_EXPIRY_MS (5 menit)
+      if (autoRefreshOn && lastActive && Date.now() - lastActive > SESSION_EXPIRY_MS) {
+        localStorage.removeItem(key);
+        return [getInitialMessageForUser(user)];
+      }
+
+      if (Array.isArray(rawMsgs) && rawMsgs.length > 0) {
+        const mapped = rawMsgs.map((m: any) => ({
+          ...m,
+          timestamp: new Date(m.timestamp || Date.now()),
+        }));
+        return pruneMessages(mapped, user);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load chat history:', err);
+  }
+  return [getInitialMessageForUser(user)];
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 interface AIChatWidgetProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const WELCOME_MESSAGE: ChatMessage = {
-  id: 'welcome',
-  role: 'model',
-  text: 'Halo! Saya **Asisten AI Apotek Sehat AI** 👋\n\nSaya siap membantu Anda:\n- Menemukan produk obat yang tersedia\n- Informasi dasar tentang produk farmasi\n- Menjawab pertanyaan tentang layanan apotek\n\n⚠️ *Catatan: Saya bukan dokter dan tidak dapat memberikan diagnosis atau resep medis. Untuk kondisi serius, selalu konsultasikan ke tenaga kesehatan.*\n\nAda yang bisa saya bantu?',
-  timestamp: new Date(),
-};
-
 export const AIChatWidget: React.FC<AIChatWidgetProps> = ({ isOpen, onClose }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  const { user } = useAuth();
+  const quickPrompts = getAiQuickPrompts(user?.role ?? null);
+  const accessInfo = getAiAccessLabel(user?.role ?? null);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadChatForUser(user));
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState<boolean>(() => {
+    return localStorage.getItem(AUTOREFRESH_KEY) !== 'false';
+  });
+  const [refreshToast, setRefreshToast] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Switch chat conversation when user changes (BEDA USER = BEDA CHAT)
+  const prevUserIdRef = useRef<string | undefined>(user?.id);
+  useEffect(() => {
+    if (prevUserIdRef.current !== user?.id) {
+      prevUserIdRef.current = user?.id;
+      setMessages(loadChatForUser(user));
+      setInputValue('');
+    }
+  }, [user]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
@@ -89,12 +213,14 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({ isOpen, onClose }) =
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    const newMessages = pruneMessages([...messages, userMsg], user);
+    setMessages(newMessages);
+    saveChatForUser(user?.id, newMessages, user);
     setInputValue('');
     setIsLoading(true);
 
     try {
-      const response = await sendAiMessage(text, messages);
+      const response = await sendAiMessage(text, newMessages);
 
       if (response.success && response.data?.reply) {
         const aiMsg: ChatMessage = {
@@ -103,7 +229,9 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({ isOpen, onClose }) =
           text: response.data.reply,
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, aiMsg]);
+        const updated = pruneMessages([...newMessages, aiMsg], user);
+        setMessages(updated);
+        saveChatForUser(user?.id, updated, user);
       } else {
         const errMsg: ChatMessage = {
           id: generateId(),
@@ -112,7 +240,9 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({ isOpen, onClose }) =
           timestamp: new Date(),
           isError: true,
         };
-        setMessages((prev) => [...prev, errMsg]);
+        const updated = pruneMessages([...newMessages, errMsg], user);
+        setMessages(updated);
+        saveChatForUser(user?.id, updated, user);
       }
     } catch {
       const errMsg: ChatMessage = {
@@ -122,7 +252,9 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({ isOpen, onClose }) =
         timestamp: new Date(),
         isError: true,
       };
-      setMessages((prev) => [...prev, errMsg]);
+      const updated = pruneMessages([...newMessages, errMsg], user);
+      setMessages(updated);
+      saveChatForUser(user?.id, updated, user);
     } finally {
       setIsLoading(false);
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -136,10 +268,49 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({ isOpen, onClose }) =
     }
   };
 
-  const handleClearChat = () => {
-    setMessages([WELCOME_MESSAGE]);
-    setInputValue('');
+  const toggleAutoRefresh = () => {
+    const nextVal = !autoRefreshEnabled;
+    setAutoRefreshEnabled(nextVal);
+    localStorage.setItem(AUTOREFRESH_KEY, nextVal ? 'true' : 'false');
+    setRefreshToast(nextVal ? '🔄 Auto-Refresh diaktifkan (otomatis bersihkan chat lama)' : '⏸️ Auto-Refresh dinonaktifkan');
+    setTimeout(() => setRefreshToast(null), 2500);
   };
+
+  const handleClearChat = (silent = false, customMsg?: string) => {
+    setIsRefreshing(true);
+    const key = getChatStorageKey(user?.id);
+    localStorage.removeItem(key);
+    const initial = [getInitialMessageForUser(user)];
+    setMessages(initial);
+    setInputValue('');
+    setTimeout(() => setIsRefreshing(false), 300);
+    if (!silent) {
+      setRefreshToast(customMsg || '✨ Obrolan berhasil disegarkan!');
+      setTimeout(() => setRefreshToast(null), 2500);
+    }
+  };
+
+  // Otomatis refresh saat modal dibuka kembali setelah jeda (agar chat tidak numpuk)
+  const prevIsOpenRef = useRef(isOpen);
+  useEffect(() => {
+    if (isOpen && !prevIsOpenRef.current) {
+      if (autoRefreshEnabled) {
+        const key = getChatStorageKey(user?.id);
+        const saved = localStorage.getItem(key);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            const lastActive = parsed?.lastActive;
+            // Jika chat lama ditutup lebih dari 2 menit lalu, otomatis mulai percakapan baru
+            if (lastActive && Date.now() - lastActive > 2 * 60 * 1000) {
+              handleClearChat(false, '✨ Obrolan otomatis disegarkan agar tidak menumpuk');
+            }
+          } catch {}
+        }
+      }
+    }
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen, autoRefreshEnabled, user]);
 
   if (!isOpen) return null;
 
@@ -190,10 +361,30 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({ isOpen, onClose }) =
           <Bot size={18} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>
-            AI Asisten Apotek
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+            <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>
+              AI Asisten Apotek
+            </span>
+            <span
+              style={{
+                fontSize: '0.68rem',
+                padding: '0.1rem 0.45rem',
+                borderRadius: '0.75rem',
+                background: user ? 'rgba(139, 92, 246, 0.28)' : 'rgba(255, 255, 255, 0.1)',
+                color: user ? '#c4b5fd' : '#94a3b8',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                maxWidth: '130px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+              title={user ? `Sesi akun: ${user.name} (${user.role})` : 'Sesi Tamu (Belum Login)'}
+            >
+              👤 {user ? user.name : 'Tamu'}
+            </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.15rem', flexWrap: 'wrap' }}>
             <span
               style={{
                 width: '7px',
@@ -203,27 +394,72 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({ isOpen, onClose }) =
                 display: 'inline-block',
               }}
             />
-            <span style={{ color: '#34d399', fontSize: '0.75rem' }}>Online · Gemini 1.5 Flash</span>
+            <span style={{ color: '#34d399', fontSize: '0.75rem' }}>Online</span>
+            <span
+              title={accessInfo.description}
+              style={{
+                fontSize: '0.66rem',
+                fontWeight: 700,
+                color: accessInfo.color,
+                background: 'rgba(255, 255, 255, 0.06)',
+                border: `1px solid ${accessInfo.color}55`,
+                borderRadius: '0.6rem',
+                padding: '0.05rem 0.4rem',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              🔐 {accessInfo.label}
+            </span>
           </div>
         </div>
         <button
-          onClick={handleClearChat}
-          title="Hapus percakapan"
+          onClick={() => handleClearChat(false)}
+          title="Segarkan Chat / Mulai Sesi Baru"
           style={{
-            background: 'transparent',
-            border: 'none',
-            color: '#94a3b8',
+            background: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            color: isRefreshing ? '#38bdf8' : '#cbd5e1',
             cursor: 'pointer',
-            padding: '0.35rem',
-            borderRadius: '0.35rem',
+            padding: '0.35rem 0.55rem',
+            borderRadius: '0.45rem',
             display: 'flex',
             alignItems: 'center',
-            transition: 'color 0.15s',
+            gap: '0.3rem',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            transition: 'all 0.15s',
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#f87171')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = '#38bdf8';
+            e.currentTarget.style.background = 'rgba(56, 189, 248, 0.15)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = isRefreshing ? '#38bdf8' : '#cbd5e1';
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+          }}
         >
-          <Trash2 size={15} />
+          <RotateCcw size={13} style={{ transform: isRefreshing ? 'rotate(-180deg)' : 'none', transition: 'transform 0.3s' }} />
+          <span>Refresh</span>
+        </button>
+        <button
+          onClick={toggleAutoRefresh}
+          title={autoRefreshEnabled ? 'Auto-Refresh Aktif (Otomatis bersihkan obrolan lama agar tidak menumpuk). Klik untuk mematikan.' : 'Auto-Refresh Nonaktif. Klik untuk mengaktifkan.'}
+          style={{
+            background: autoRefreshEnabled ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+            border: autoRefreshEnabled ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
+            color: autoRefreshEnabled ? '#34d399' : '#94a3b8',
+            cursor: 'pointer',
+            padding: '0.3rem 0.45rem',
+            borderRadius: '0.45rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+            fontSize: '0.68rem',
+            fontWeight: 600,
+          }}
+        >
+          <Sparkles size={11} />
+          <span>Auto {autoRefreshEnabled ? 'ON' : 'OFF'}</span>
         </button>
         <button
           onClick={onClose}
@@ -246,6 +482,27 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({ isOpen, onClose }) =
         </button>
       </div>
 
+      {refreshToast && (
+        <div
+          style={{
+            padding: '0.45rem 1rem',
+            background: 'rgba(16, 185, 129, 0.22)',
+            borderBottom: '1px solid rgba(16, 185, 129, 0.35)',
+            color: '#a7f3d0',
+            fontSize: '0.74rem',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.4rem',
+            animation: 'fadeIn 0.2s ease',
+            flexShrink: 0,
+          }}
+        >
+          <Sparkles size={13} />
+          <span>{refreshToast}</span>
+        </div>
+      )}
       {/* ── Safety Notice ── */}
       <div
         style={{
@@ -417,6 +674,46 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({ isOpen, onClose }) =
         </button>
       )}
 
+      {/* ── Banner Obrolan Panjang (Anti-Numpuk) ── */}
+      {messages.length >= 6 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            margin: '0.35rem 1rem 0.15rem',
+            padding: '0.35rem 0.65rem',
+            background: 'rgba(139, 92, 246, 0.12)',
+            border: '1px dashed rgba(139, 92, 246, 0.3)',
+            borderRadius: '0.5rem',
+            fontSize: '0.72rem',
+            color: '#c4b5fd',
+            flexShrink: 0,
+          }}
+        >
+          <span>💬 ${messages.length} pesan aktif · Auto-refresh aktif</span>
+          <button
+            onClick={() => handleClearChat(false)}
+            style={{
+              background: 'rgba(139, 92, 246, 0.25)',
+              border: '1px solid rgba(139, 92, 246, 0.4)',
+              color: '#fff',
+              borderRadius: '0.35rem',
+              padding: '0.2rem 0.5rem',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+            }}
+          >
+            <RotateCcw size={11} />
+            <span>Segarkan</span>
+          </button>
+        </div>
+      )}
+
       {/* ── Quick Prompts ── */}
       {messages.length <= 2 && !isLoading && (
         <div
@@ -429,7 +726,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({ isOpen, onClose }) =
             flexShrink: 0,
           }}
         >
-          {AI_QUICK_PROMPTS.slice(0, 4).map((prompt) => (
+          {quickPrompts.slice(0, 4).map((prompt) => (
             <button
               key={prompt}
               onClick={() => handleSend(prompt)}
@@ -534,6 +831,7 @@ export const AIFloatingButton: React.FC<AIFloatingButtonProps> = ({ onClick, isO
   return (
     <button
       id="ai-chat-trigger"
+      className="ai-floating-btn"
       onClick={onClick}
       title={isOpen ? 'Tutup AI Assistant' : 'Buka AI Assistant'}
       style={{

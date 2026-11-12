@@ -34,7 +34,7 @@ export const MedicineCard: React.FC<MedicineCardProps> = ({
     }).format(val);
   };
 
-  const defaultImage = 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=80';
+  const defaultImage = '/images/medicines/paracetamol-500mg.jpg';
 
   return (
     <div

@@ -10,7 +10,9 @@ import {
   CheckCircle, 
   ShoppingBag, 
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  RefreshCw,
+  Wallet,
 } from 'lucide-react';
 
 interface MyOrdersViewProps {
@@ -116,6 +118,11 @@ export const MyOrdersView: React.FC<MyOrdersViewProps> = ({
     }
   };
 
+  const totalSpent = orders.filter((o) => o.paymentStatus === 'PAID').reduce((sum, o) => sum + o.totalAmount, 0);
+  const pendingRxCount = orders.filter((o) => o.status === 'PENDING_VERIFICATION').length;
+  const pendingPayCount = orders.filter((o) => o.status === 'PENDING_PAYMENT').length;
+  const completedCount = orders.filter((o) => o.status === 'COMPLETED' || o.paymentStatus === 'PAID').length;
+
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '2rem 1.5rem' }}>
       {/* Header */}
@@ -129,14 +136,107 @@ export const MyOrdersView: React.FC<MyOrdersViewProps> = ({
           </p>
         </div>
 
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={<ShoppingBag size={15} />}
-          onClick={onExploreCatalog}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<RefreshCw size={14} />}
+            onClick={fetchOrders}
+            disabled={isLoading}
+          >
+            Refresh
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            icon={<ShoppingBag size={15} />}
+            onClick={onExploreCatalog}
+          >
+            Belanja Obat Baru
+          </Button>
+        </div>
+      </div>
+
+      {/* Summary Stats Cards */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: '1rem',
+          marginBottom: '1.75rem',
+        }}
+      >
+        <div
+          style={{
+            background: '#ffffff',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--border-light)',
+            padding: '1rem 1.25rem',
+            boxShadow: 'var(--shadow-sm)',
+          }}
         >
-          Belanja Obat Baru
-        </Button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--secondary-500)', fontWeight: 600 }}>Total Pesanan</span>
+            <Package size={16} color="var(--primary-600)" />
+          </div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--secondary-900)' }}>
+            {orders.length}
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: '#ffffff',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--border-light)',
+            padding: '1rem 1.25rem',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.78rem', color: '#b45309', fontWeight: 600 }}>Verifikasi Resep</span>
+            <FileText size={16} color="#d97706" />
+          </div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#b45309' }}>
+            {pendingRxCount}
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: '#ffffff',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--border-light)',
+            padding: '1rem 1.25rem',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.78rem', color: '#1d4ed8', fontWeight: 600 }}>Menunggu Bayar</span>
+            <Clock size={16} color="#2563eb" />
+          </div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1d4ed8' }}>
+            {pendingPayCount}
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: '#ffffff',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--border-light)',
+            padding: '1rem 1.25rem',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.78rem', color: '#047857', fontWeight: 600 }}>Total Belanja</span>
+            <Wallet size={16} color="#059669" />
+          </div>
+          <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#047857' }}>
+            {formatIDR(totalSpent)}
+          </div>
+        </div>
       </div>
 
       {/* Filter Tabs */}
@@ -152,9 +252,9 @@ export const MyOrdersView: React.FC<MyOrdersViewProps> = ({
       >
         {[
           { key: 'ALL', label: `Semua (${orders.length})` },
-          { key: 'PENDING_VERIFICATION', label: `Verifikasi Resep (${orders.filter((o) => o.status === 'PENDING_VERIFICATION').length})` },
-          { key: 'PENDING_PAYMENT', label: `Menunggu Bayar (${orders.filter((o) => o.status === 'PENDING_PAYMENT').length})` },
-          { key: 'CONFIRMED', label: `Lunas / Diproses (${orders.filter((o) => o.status === 'CONFIRMED' || o.paymentStatus === 'PAID').length})` },
+          { key: 'PENDING_VERIFICATION', label: `Verifikasi Resep (${pendingRxCount})` },
+          { key: 'PENDING_PAYMENT', label: `Menunggu Bayar (${pendingPayCount})` },
+          { key: 'CONFIRMED', label: `Lunas / Diproses (${completedCount})` },
         ].map((tab) => (
           <button
             key={tab.key}

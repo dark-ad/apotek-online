@@ -1,3 +1,9 @@
+import {
+  notifyPrescriptionApproved,
+  notifyPrescriptionRejected,
+  notifyOrderStatusChanged,
+  notifyLowStock,
+} from '../services/telegramService';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { prisma } from '../../lib/db';
 import { sendJson, parseJsonBody, requireAuth, parseIntSafe } from '../utils';
@@ -234,6 +240,20 @@ export async function handleVerifyPrescription(
       },
     });
 
+    // Telegram Notification: Prescription Rejected
+    Promise.resolve().then(async () => {
+      try {
+        await notifyPrescriptionRejected({
+          id: updated.id,
+          shortId: updated.id.slice(-8).toUpperCase(),
+          verifierName: authUser.name,
+          reason,
+        });
+      } catch (err: any) {
+        console.warn('[Telegram Prescription Reject Hook]', err?.message);
+      }
+    });
+
     sendJson(res, 200, {
       success: true,
       message: `Resep untuk pesanan #${updated.id.slice(-8).toUpperCase()} berhasil ditolak. Pesanan dibatalkan.`,
@@ -255,6 +275,20 @@ export async function handleVerifyPrescription(
       status: nextStatus,
       rejectionReason: null,
     },
+  });
+
+  // Telegram Notification: Prescription Approved
+  Promise.resolve().then(async () => {
+    try {
+      await notifyPrescriptionApproved({
+        id: updated.id,
+        shortId: updated.id.slice(-8).toUpperCase(),
+        verifierName: authUser.name,
+        nextStatus,
+      });
+    } catch (err: any) {
+      console.warn('[Telegram Prescription Approve Hook]', err?.message);
+    }
   });
 
   sendJson(res, 200, {
@@ -332,6 +366,22 @@ export async function handleUpdateOrderStatus(
       status: newStatus,
       ...(newStatus === 'CANCELLED' && reason ? { rejectionReason: reason } : {}),
     },
+  });
+
+  // Telegram Notification: Order Status Changed
+  Promise.resolve().then(async () => {
+    try {
+      await notifyOrderStatusChanged({
+        id: updated.id,
+        shortId: updated.id.slice(-8).toUpperCase(),
+        oldStatus: order.status,
+        newStatus,
+        updatedBy: authUser.name,
+        notes: reason || undefined,
+      });
+    } catch (err: any) {
+      console.warn('[Telegram Order Status Hook]', err?.message);
+    }
   });
 
   sendJson(res, 200, {
@@ -462,6 +512,21 @@ export async function handleUpdateMedicineStock(
     include: {
       category: { select: { name: true } },
     },
+  });
+
+  // Telegram Notification: Low Stock Alert
+  Promise.resolve().then(async () => {
+    try {
+      await notifyLowStock({
+        id: updated.id,
+        name: updated.name,
+        stock: updated.stock,
+        unit: updated.unit,
+        category: updated.category?.name,
+      });
+    } catch (err: any) {
+      console.warn('[Telegram Stock Update Hook]', err?.message);
+    }
   });
 
   sendJson(res, 200, {

@@ -92,6 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(authToken);
       setUser(authUser);
       localStorage.setItem(AUTH_TOKEN_KEY, authToken);
+        localStorage.setItem('apotek_token', authToken);
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(authUser));
 
       return { success: true, message: data.message };
@@ -131,6 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(authToken);
       setUser(authUser);
       localStorage.setItem(AUTH_TOKEN_KEY, authToken);
+        localStorage.setItem('apotek_token', authToken);
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(authUser));
 
       return { success: true, message: data.message };
@@ -149,6 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     setUser(null);
     localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem('apotek_token');
     localStorage.removeItem(AUTH_USER_KEY);
   };
 

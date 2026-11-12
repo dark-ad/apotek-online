@@ -105,7 +105,7 @@ async function main() {
       stock: 150,
       unit: 'Strip (10 Kaplet)',
       requiresPrescription: false,
-      image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=80',
+      image: '/images/medicines/paracetamol-500mg.jpg',
     },
   });
 
@@ -118,7 +118,7 @@ async function main() {
       stock: 50,
       unit: 'Strip (10 Kapsul)',
       requiresPrescription: true,
-      image: 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=500&auto=format&fit=crop&q=80',
+      image: '/images/medicines/amoxicillin-500mg.jpg',
     },
   });
 
@@ -131,7 +131,7 @@ async function main() {
       stock: 200,
       unit: 'Strip (10 Tablet)',
       requiresPrescription: false,
-      image: 'https://images.unsplash.com/photo-1550572017-edd951aa8f72?w=500&auto=format&fit=crop&q=80',
+      image: '/images/medicines/antasida-doen.jpg',
     },
   });
 
@@ -144,7 +144,7 @@ async function main() {
       stock: 80,
       unit: 'Tube (10 Tablet)',
       requiresPrescription: false,
-      image: 'https://images.unsplash.com/photo-1577401239170-897942555fb3?w=500&auto=format&fit=crop&q=80',
+      image: '/images/medicines/vitamin-c-zinc.jpg',
     },
   });
 
@@ -157,7 +157,7 @@ async function main() {
       stock: 110,
       unit: 'Strip (10 Tablet)',
       requiresPrescription: false,
-      image: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=500&auto=format&fit=crop&q=80',
+      image: '/images/medicines/cetirizine-10mg.jpg',
     },
   });
 
@@ -170,7 +170,7 @@ async function main() {
       stock: 65,
       unit: 'Strip (10 Kapsul)',
       requiresPrescription: true,
-      image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=80',
+      image: '/images/medicines/omeprazole-20mg.jpg',
     },
   });
 
@@ -183,7 +183,7 @@ async function main() {
       stock: 35,
       unit: '1 Unit Box',
       requiresPrescription: false,
-      image: 'https://images.unsplash.com/photo-1584017911766-d451b3d0e843?w=500&auto=format&fit=crop&q=80',
+      image: '/images/medicines/thermometer-infrared.jpg',
     },
   });
 
@@ -197,7 +197,7 @@ async function main() {
       stock: 0, // STOK HABIS
       unit: 'Botol 60ml',
       requiresPrescription: true, // Memerlukan Resep
-      image: 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=500&auto=format&fit=crop&q=80',
+      image: '/images/medicines/amoxicillin-sirup.jpg',
     },
   });
 
@@ -210,7 +210,7 @@ async function main() {
       stock: 0, // STOK HABIS
       unit: 'Strip (10 Tablet)',
       requiresPrescription: false,
-      image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=80',
+      image: '/images/medicines/ibuprofen-400mg.jpg',
     },
   });
 
@@ -223,7 +223,7 @@ async function main() {
       stock: 45,
       unit: 'Botol 60ml',
       requiresPrescription: false,
-      image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=80',
+      image: '/images/medicines/povidone-iodine.jpg',
     },
   });
 
@@ -236,7 +236,7 @@ async function main() {
       stock: 90,
       unit: 'Box (50 Pcs)',
       requiresPrescription: false,
-      image: 'https://images.unsplash.com/photo-1584017911766-d451b3d0e843?w=500&auto=format&fit=crop&q=80',
+      image: '/images/medicines/masker-medis-3ply.jpg',
     },
   });
 
@@ -249,7 +249,7 @@ async function main() {
       stock: 60,
       unit: 'Botol 120ml',
       requiresPrescription: false,
-      image: 'https://images.unsplash.com/photo-1550572017-edd951aa8f72?w=500&auto=format&fit=crop&q=80',
+      image: '/images/medicines/minyak-kayu-putih.jpg',
     },
   });
 

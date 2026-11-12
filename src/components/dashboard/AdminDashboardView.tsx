@@ -32,7 +32,7 @@ import {
   CreditCard,
   Pill,
   XCircle,
-  DollarSign
+  DollarSign,
 } from 'lucide-react';
 
 export const AdminDashboardView: React.FC = () => {
@@ -845,7 +845,7 @@ export const AdminDashboardView: React.FC = () => {
           ) : stats ? (
             <div>
               {/* Top KPI Cards Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+              <div className="dashboard-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
                 {/* 1. Total Obat */}
                 <div style={{ background: '#ffffff', borderRadius: 'var(--radius-lg)', padding: '1.25rem', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--secondary-500)', fontSize: '0.825rem', fontWeight: 600 }}>
@@ -946,7 +946,7 @@ export const AdminDashboardView: React.FC = () => {
               </div>
 
               {/* Composition Breakdown */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+              <div className="dashboard-content-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
                 <div style={{ background: '#ffffff', borderRadius: 'var(--radius-xl)', padding: '1.75rem', border: '1px solid var(--border-light)' }}>
                   <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 1rem 0', color: 'var(--secondary-900)' }}>
                     Komposisi Akun Pengguna
