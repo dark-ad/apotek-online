@@ -130,10 +130,8 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ onBackToCart, onOrde
       errors.address = 'Alamat terlalu singkat. Mohon cantumkan nama jalan, nomor, dan kota lengkap (min. 10 karakter).';
     }
 
-    // Business Rule: Prescription required check
-    if (needsPrescription && !prescriptionUrl) {
-      errors.rx = 'Pesanan ini mengandung obat resep keras. Anda wajib mengunggah foto resep dokter.';
-    }
+    // Business Rule: Prescription is optional (can proceed with or without prescription file)
+    // If uploaded, apotechary will verify it; if not, order still proceeds directly to payment.
 
     setFieldErrors(errors);
 
@@ -394,26 +392,24 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ onBackToCart, onOrde
                 borderRadius: 'var(--radius-lg)',
                 padding: '1.5rem',
                 boxShadow: 'var(--shadow-sm)',
-                border: needsPrescription
-                  ? prescriptionUrl
-                    ? '2px solid #059669'
-                    : '2px solid #e11d48'
+                border: prescriptionUrl
+                  ? '2px solid #059669'
                   : '1px solid var(--border-light)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <FileText size={18} color={needsPrescription ? '#e11d48' : 'var(--primary-600)'} />
+                  <FileText size={18} color="var(--primary-600)" />
                   <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--secondary-900)' }}>
-                    3. Upload Resep Dokter {needsPrescription ? <span style={{ color: '#e11d48' }}>(Wajib *)</span> : '(Opsional)'}
+                    3. Upload Resep Dokter <span style={{ color: 'var(--secondary-500)', fontSize: '0.9rem', fontWeight: 500 }}>(Opsional)</span>
                   </h3>
                 </div>
 
-                {needsPrescription ? (
+                {prescriptionUrl ? (
                   <span
                     style={{
-                      background: prescriptionUrl ? '#ecfdf5' : '#fff1f2',
-                      color: prescriptionUrl ? '#059669' : '#e11d48',
+                      background: '#ecfdf5',
+                      color: '#059669',
                       padding: '0.25rem 0.6rem',
                       borderRadius: 'var(--radius-full)',
                       fontSize: '0.75rem',
@@ -423,15 +419,23 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ onBackToCart, onOrde
                       gap: '4px',
                     }}
                   >
-                    {prescriptionUrl ? (
-                      <>
-                        <CheckCircle size={14} /> Resep Terunggah
-                      </>
-                    ) : (
-                      <>
-                        <AlertTriangle size={14} /> Resep Wajib
-                      </>
-                    )}
+                    <CheckCircle size={14} /> Resep Terunggah
+                  </span>
+                ) : needsPrescription ? (
+                  <span
+                    style={{
+                      background: '#eff6ff',
+                      color: '#2563eb',
+                      padding: '0.25rem 0.6rem',
+                      borderRadius: 'var(--radius-full)',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <FileText size={14} /> Opsional
                   </span>
                 ) : (
                   <span style={{ fontSize: '0.75rem', color: 'var(--secondary-500)', background: 'var(--secondary-100)', padding: '0.2rem 0.5rem', borderRadius: 'var(--radius-sm)' }}>
@@ -443,17 +447,17 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ onBackToCart, onOrde
               {needsPrescription && (
                 <div
                   style={{
-                    background: '#fff1f2',
-                    border: '1px solid #fecdd3',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
                     borderRadius: 'var(--radius-md)',
                     padding: '0.85rem 1rem',
                     marginBottom: '1rem',
                     fontSize: '0.825rem',
-                    color: '#9f1239',
+                    color: 'var(--secondary-700)',
                     lineHeight: 1.5,
                   }}
                 >
-                  <strong>⚠️ Regulasi Apotek:</strong> Keranjang belanja Anda mengandung obat yang membutuhkan resep dokter resmi. Pesanan <strong>hanya dapat diproses</strong> setelah Anda mengunggah resep yang valid untuk diverifikasi oleh staf apoteker berlisensi.
+                  <strong style={{ color: 'var(--primary-700)' }}>ℹ️ Informasi Resep:</strong> Keranjang belanja Anda mengandung obat yang dapat disertai resep dokter. Pengunggahan foto/scan resep bersifat <strong>opsional</strong>. Anda tetap dapat melanjutkan pemesanan langsung tanpa mengunggah resep.
                 </div>
               )}
 
@@ -721,10 +725,10 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ onBackToCart, onOrde
                   marginTop: '1rem',
                   padding: '0.75rem',
                   borderRadius: 'var(--radius-sm)',
-                  background: needsPrescription ? '#fff1f2' : '#f0fdf4',
-                  border: needsPrescription ? '1px solid #fecdd3' : '1px solid #bbf7d0',
+                  background: prescriptionUrl ? '#fff1f2' : '#f0fdf4',
+                  border: prescriptionUrl ? '1px solid #fecdd3' : '1px solid #bbf7d0',
                   fontSize: '0.75rem',
-                  color: needsPrescription ? '#9f1239' : '#166534',
+                  color: prescriptionUrl ? '#9f1239' : '#166534',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
@@ -733,7 +737,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ onBackToCart, onOrde
                 <Clock size={16} style={{ flexShrink: 0 }} />
                 <span>
                   <strong>Status Awal:</strong>{' '}
-                  {needsPrescription
+                  {prescriptionUrl
                     ? 'PENDING_VERIFICATION (Menunggu verifikasi resep oleh staf apoteker)'
                     : 'PENDING_PAYMENT (Menunggu konfirmasi pembayaran manual)'}
                 </span>
@@ -745,14 +749,12 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ onBackToCart, onOrde
                   type="submit"
                   variant="primary"
                   size="lg"
-                  disabled={isSubmitting || isUploadingRx || (needsPrescription && !prescriptionUrl)}
+                  disabled={isSubmitting || isUploadingRx}
                   style={{ width: '100%', justifyContent: 'center', fontWeight: 700 }}
                   icon={<Lock size={16} />}
                 >
                   {isSubmitting
                     ? 'Memproses Pesanan...'
-                    : needsPrescription && !prescriptionUrl
-                    ? 'Wajib Upload Resep Dokter'
                     : 'Konfirmasi & Buat Pesanan'}
                 </Button>
               </div>

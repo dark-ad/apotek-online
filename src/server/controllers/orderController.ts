@@ -3,6 +3,8 @@ import {
   notifyPrescriptionReviewRequired,
   notifyLowStock,
 } from '../services/telegramService';
+import { notifyNewOrderWhatsapp } from '../services/whatsappService';
+import { notifyOrderCreatedInApp } from '../services/notificationService';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { prisma } from '../../lib/db';
 import { sendJson, parseJsonBody, requireAuth } from '../utils';
@@ -139,9 +141,20 @@ export async function handleCheckout(req: IncomingMessage, res: ServerResponse):
     return newOrder;
   });
 
-  // Post-transaction Non-blocking Telegram Notification Dispatch
+  // Post-transaction Non-blocking Notification Dispatch (In-App DB, Telegram, WhatsApp)
   Promise.resolve().then(async () => {
     try {
+      // 1. In-App Notification to Admins and Staff
+      await notifyOrderCreatedInApp({
+        id: order.id,
+        shortId: order.id.slice(-8).toUpperCase(),
+        customerName: customer.name,
+        totalAmount: order.totalAmount,
+        itemCount: cartItems.length,
+        status: order.status,
+      });
+
+      // 2. Telegram Notification
       await notifyOrderCreated({
         id: order.id,
         shortId: order.id.slice(-8).toUpperCase(),
@@ -174,6 +187,22 @@ export async function handleCheckout(req: IncomingMessage, res: ServerResponse):
           unit: item.medicine.unit,
         });
       }
+
+      // WhatsApp Notification (Fonnte): Notify Admin and Customer
+      await notifyNewOrderWhatsapp({
+        id: order.id,
+        shortId: order.id.slice(-8).toUpperCase(),
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        totalAmount: order.totalAmount,
+        items: cartItems.map((i) => ({
+          name: i.medicine.name,
+          quantity: i.quantity,
+          unit: i.medicine.unit,
+        })),
+        status: order.status,
+        requiresPrescription: order.requiresPrescription,
+      });
     } catch (telegramErr: any) {
       console.warn('[Telegram Checkout Hook]', telegramErr?.message);
     }

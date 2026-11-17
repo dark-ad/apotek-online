@@ -10,6 +10,8 @@ import {
   Package,
   FileText,
   Boxes,
+  Clock,
+  ShoppingBag,
 } from 'lucide-react';
 
 interface NotificationDropdownProps {
@@ -43,17 +45,30 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ onNa
   };
 
   const getSeverityIcon = (notif: AppNotification) => {
-    switch (notif.severity) {
-      case 'success':
+    switch (notif.type) {
+      case 'new_order':
+        return <ShoppingBag size={16} color="#2563eb" />;
+      case 'order_approved':
         return <CheckCircle2 size={16} color="#059669" />;
-      case 'error':
+      case 'order_rejected':
         return <AlertCircle size={16} color="#dc2626" />;
-      case 'warning':
-        return <AlertTriangle size={16} color="#d97706" />;
+      case 'order_status':
+        return <Clock size={16} color="#0d9488" />;
+      case 'prescription_status':
+        return <FileText size={16} color="#2563eb" />;
+      case 'low_stock':
+        return <Boxes size={16} color="#d97706" />;
       default:
-        if (notif.type === 'prescription_status') return <FileText size={16} color="#2563eb" />;
-        if (notif.type === 'low_stock') return <Boxes size={16} color="#d97706" />;
-        return <Package size={16} color="#2563eb" />;
+        switch (notif.severity) {
+          case 'success':
+            return <CheckCircle2 size={16} color="#059669" />;
+          case 'error':
+            return <AlertCircle size={16} color="#dc2626" />;
+          case 'warning':
+            return <AlertTriangle size={16} color="#d97706" />;
+          default:
+            return <Package size={16} color="#2563eb" />;
+        }
     }
   };
 

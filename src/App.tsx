@@ -113,24 +113,30 @@ const AppInner: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  return (
-    <div className="app-layout">
-      {/* Top Banner */}
-      <div style={{ background: 'linear-gradient(90deg, #064e3b, #0c4a6e)', color: '#ffffff', padding: '0.45rem 1rem', fontSize: '0.8rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-        <Sparkles size={14} color="#34d399" />
-        <span>
-          <strong>Apotek Sehat AI:</strong> Platform pemesanan obat modern dengan AI Assistant & verifikasi resep digital resmi.
-        </span>
-      </div>
+  const isAdminView = currentView === 'admin-dashboard';
 
-      {/* Main Sticky Navbar */}
-      <Navbar
-        cartCount={totalCount}
-        onOpenCartModal={() => setIsCartOpen(true)}
-        onOpenAuthModal={() => setIsAuthOpen(true)}
-        onNavigate={handleNavigate}
-        currentView={currentView}
-      />
+  return (
+    <div className={`app-layout ${isAdminView ? 'admin-layout-mode' : ''}`}>
+      {/* Top Banner (Storefront only) */}
+      {!isAdminView && (
+        <div style={{ background: 'linear-gradient(90deg, #064e3b, #0c4a6e)', color: '#ffffff', padding: '0.45rem 1rem', fontSize: '0.8rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+          <Sparkles size={14} color="#34d399" />
+          <span>
+            <strong>Apotek Sehat AI:</strong> Platform pemesanan obat modern dengan AI Assistant & verifikasi resep digital resmi.
+          </span>
+        </div>
+      )}
+
+      {/* Main Sticky Navbar (Storefront only) */}
+      {!isAdminView && (
+        <Navbar
+          cartCount={totalCount}
+          onOpenCartModal={() => setIsCartOpen(true)}
+          onOpenAuthModal={() => setIsAuthOpen(true)}
+          onNavigate={handleNavigate}
+          currentView={currentView}
+        />
+      )}
 
       {/* Main Content — View Router */}
       {currentView === 'home' && (
@@ -278,12 +284,12 @@ const AppInner: React.FC = () => {
           onGoHome={() => setCurrentView('home')}
           onOpenLogin={() => setIsAuthOpen(true)}
         >
-          <AdminDashboardView />
+          <AdminDashboardView onNavigate={handleNavigate} />
         </ProtectedRoute>
       )}
 
-      {/* Footer */}
-      <Footer />
+      {/* Footer (Storefront only) */}
+      {!isAdminView && <Footer />}
 
       {/* Shopping Cart Drawer / Modal (Server-Side Validated) */}
       <CartDrawerModal

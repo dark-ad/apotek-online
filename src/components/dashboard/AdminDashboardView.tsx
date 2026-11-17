@@ -12,6 +12,7 @@ import {
 import { Button } from '../common/Button';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
+import { NotificationDropdown } from '../common/NotificationDropdown';
 import { useToast } from '../../context/ToastContext';
 import {
   ShieldCheck,
@@ -19,7 +20,6 @@ import {
   RefreshCw,
   Layers,
   ShoppingBag,
-  TrendingUp,
   AlertTriangle,
   Clock,
   CheckCircle2,
@@ -33,14 +33,31 @@ import {
   Pill,
   XCircle,
   DollarSign,
+  Cpu,
+  MessageSquare,
+  LayoutDashboard,
+  Menu,
+  X,
+  ChevronRight,
+  Store,
+  ChevronDown,
+  LogOut,
 } from 'lucide-react';
+import { AiProviderConfigView } from './AiProviderConfigView';
+import { WhatsappConfigView } from './WhatsappConfigView';
 
-export const AdminDashboardView: React.FC = () => {
-  const { user } = useAuth();
+interface AdminDashboardViewProps {
+  onNavigate?: (view: any, data?: any) => void;
+}
+
+export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onNavigate }) => {
+  const { user, logout } = useAuth();
   const toast = useToast();
 
-  // Active Tab: 'overview' | 'medicines' | 'categories' | 'users' | 'orders' | 'transactions'
-  const [activeTab, setActiveTab] = useState<'overview' | 'medicines' | 'categories' | 'users' | 'orders' | 'transactions'>('overview');
+  // Active Tab: 'overview' | 'medicines' | 'categories' | 'users' | 'orders' | 'transactions' | 'ai-config' | 'whatsapp'
+  const [activeTab, setActiveTab] = useState<'overview' | 'medicines' | 'categories' | 'users' | 'orders' | 'transactions' | 'ai-config' | 'whatsapp'>('overview');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   // 1. Stats State
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -541,297 +558,855 @@ export const AdminDashboardView: React.FC = () => {
   };
 
   return (
-    <div className="container" style={{ padding: '2.5rem 1.25rem 5rem 1.25rem' }}>
-      {/* Top Banner Header */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%)',
-          color: '#ffffff',
-          borderRadius: 'var(--radius-xl)',
-          padding: '2.25rem',
-          boxShadow: '0 10px 25px rgba(30, 27, 75, 0.25)',
-          marginBottom: '2rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '1.5rem',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <div
-            style={{
-              width: '4.5rem',
-              height: '4.5rem',
-              borderRadius: 'var(--radius-lg)',
-              background: 'rgba(255, 255, 255, 0.15)',
-              backdropFilter: 'blur(8px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-            }}
-          >
-            <ShieldCheck size={36} color="#c7d2fe" />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
-              <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
-                Dashboard Administrator
-              </h1>
-              <span
-                style={{
-                  background: 'rgba(199, 210, 254, 0.2)',
-                  color: '#e0e7ff',
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
-                  padding: '2px 8px',
-                  borderRadius: '6px',
-                  border: '1px solid rgba(199, 210, 254, 0.3)',
-                }}
-              >
-                SUPER ADMIN
-              </span>
-            </div>
-            <p style={{ color: '#c7d2fe', fontSize: '0.9rem', margin: 0 }}>
-              Halo, <strong>{user?.name}</strong> • Kelola master data obat, kategori, pengguna, pesanan, dan keuangan apotek.
-            </p>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<RefreshCw size={14} />}
-            onClick={() => {
-              fetchStats();
-              if (activeTab === 'medicines') fetchMedicines();
-              if (activeTab === 'categories') fetchCategories();
-              if (activeTab === 'users') fetchUsers();
-              if (activeTab === 'orders') fetchOrders();
-              if (activeTab === 'transactions') fetchTransactions();
-              showToast('success', 'Data database disinkronkan.');
-            }}
-            style={{ background: 'rgba(255,255,255,0.1)', color: '#ffffff', borderColor: 'rgba(255,255,255,0.2)' }}
-          >
-            Sinkronkan
-          </Button>
-        </div>
-      </div>
-
-      {/* Role-Based Admin Notification Banners */}
-      {stats && (
-        <>
-          {(stats.outOfStockMedicines > 0 || stats.lowStockMedicines > 0) && (
-            <div
-              style={{
-                background: '#fff1f2',
-                border: '1px solid #fecdd3',
-                borderLeft: '5px solid #e11d48',
-                borderRadius: 'var(--radius-md)',
-                padding: '0.875rem 1.25rem',
-                marginBottom: '1rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '0.75rem',
-                color: '#9f1239',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <AlertTriangle size={22} color="#e11d48" />
-                <div>
-                  <strong style={{ fontSize: '0.95rem' }}>Peringatan Inventaris Stok:</strong> Terdapat{' '}
-                  <strong>{stats.outOfStockMedicines} obat stok habis</strong> dan{' '}
-                  <strong>{stats.lowStockMedicines} obat stok menipis (≤ 10 unit)</strong>.
-                </div>
-              </div>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setActiveTab('medicines')}
-                style={{ background: '#e11d48', borderColor: '#e11d48' }}
-              >
-                Kelola Stok Obat ({stats.outOfStockMedicines + stats.lowStockMedicines})
-              </Button>
-            </div>
-          )}
-
-          {stats.pendingOrders > 0 && (
-            <div
-              style={{
-                background: '#eff6ff',
-                border: '1px solid #bfdbfe',
-                borderLeft: '5px solid #2563eb',
-                borderRadius: 'var(--radius-md)',
-                padding: '0.875rem 1.25rem',
-                marginBottom: '1rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '0.75rem',
-                color: '#1e40af',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <Clock size={22} color="#2563eb" />
-                <div>
-                  <strong style={{ fontSize: '0.95rem' }}>Notifikasi Pesanan:</strong> Terdapat{' '}
-                  <strong>{stats.pendingOrders} pesanan berstatus pending</strong> menunggu verifikasi staf.
-                </div>
-              </div>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setActiveTab('orders')}
-              >
-                Lihat Antrean Pesanan ({stats.pendingOrders})
-              </Button>
-            </div>
-          )}
-        </>
+    <div className="admin-dashboard-root" style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', background: '#f8fafc' }}>
+      {/* ─── MOBILE BACKDROP OVERLAY ─── */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.45)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 998,
+          }}
+          className="admin-sidebar-backdrop"
+        />
       )}
 
-      {/* Navigation Tabs */}
-      <div
+      {/* ─── SIDEBAR (LEFT) ─── */}
+      <aside
+        className={`admin-sidebar ${isSidebarOpen ? 'open' : ''}`}
         style={{
+          width: '260px',
+          height: '100vh',
+          background: '#ffffff',
+          borderRight: '1px solid #e2e8f0',
           display: 'flex',
-          gap: '0.5rem',
-          borderBottom: '2px solid var(--border-light)',
-          marginBottom: '2rem',
-          overflowX: 'auto',
-          paddingBottom: '2px',
+          flexDirection: 'column',
+          flexShrink: 0,
+          zIndex: 999,
+          transition: 'transform 0.25s ease',
         }}
       >
-        <button
-          onClick={() => setActiveTab('overview')}
+        {/* Brand Header */}
+        <div
           style={{
-            padding: '0.75rem 1.25rem',
-            fontWeight: 700,
-            fontSize: '0.9rem',
-            border: 'none',
-            background: 'none',
-            cursor: 'pointer',
+            padding: '1.25rem 1.25rem 1rem 1.25rem',
+            borderBottom: '1px solid #f1f5f9',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
-            color: activeTab === 'overview' ? '#4338ca' : 'var(--secondary-500)',
-            borderBottom: activeTab === 'overview' ? '3px solid #4338ca' : '3px solid transparent',
-            transition: 'all 0.2s ease',
+            justifyContent: 'space-between',
           }}
         >
-          <TrendingUp size={16} />
-          Ringkasan Statistik
-        </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 10px rgba(16, 185, 129, 0.25)',
+              }}
+            >
+              <Pill size={20} color="#ffffff" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#0f172a', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                Apotek<span style={{ color: '#059669' }}>Sehat</span>
+              </div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em' }}>
+                ADMINISTRATOR
+              </div>
+            </div>
+          </div>
 
-        <button
-          onClick={() => setActiveTab('medicines')}
-          style={{
-            padding: '0.75rem 1.25rem',
-            fontWeight: 700,
-            fontSize: '0.9rem',
-            border: 'none',
-            background: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            color: activeTab === 'medicines' ? '#4338ca' : 'var(--secondary-500)',
-            borderBottom: activeTab === 'medicines' ? '3px solid #4338ca' : '3px solid transparent',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          <Pill size={16} />
-          Data Obat (CRUD)
-        </button>
+          {/* Close button on mobile */}
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="admin-sidebar-close-btn"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#64748b',
+              padding: '4px',
+              display: 'none',
+            }}
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-        <button
-          onClick={() => setActiveTab('categories')}
-          style={{
-            padding: '0.75rem 1.25rem',
-            fontWeight: 700,
-            fontSize: '0.9rem',
-            border: 'none',
-            background: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            color: activeTab === 'categories' ? '#4338ca' : 'var(--secondary-500)',
-            borderBottom: activeTab === 'categories' ? '3px solid #4338ca' : '3px solid transparent',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          <Layers size={16} />
-          Kategori Obat
-        </button>
+        {/* Sidebar Navigation Items */}
+        <div style={{ padding: '1rem 0.75rem', overflowY: 'auto', flex: 1 }}>
+          {/* GROUP 1: UTAMA */}
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.06em', padding: '0.5rem 0.75rem 0.35rem 0.75rem' }}>
+            UTAMA
+          </div>
 
-        <button
-          onClick={() => setActiveTab('users')}
-          style={{
-            padding: '0.75rem 1.25rem',
-            fontWeight: 700,
-            fontSize: '0.9rem',
-            border: 'none',
-            background: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            color: activeTab === 'users' ? '#4338ca' : 'var(--secondary-500)',
-            borderBottom: activeTab === 'users' ? '3px solid #4338ca' : '3px solid transparent',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          <Users size={16} />
-          Manajemen User & Staff
-        </button>
+          <button
+            onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.65rem 0.85rem',
+              borderRadius: '10px',
+              border: 'none',
+              cursor: 'pointer',
+              marginBottom: '0.25rem',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'overview' ? 700 : 500,
+              color: activeTab === 'overview' ? '#059669' : '#475569',
+              background: activeTab === 'overview' ? '#ecfdf5' : 'transparent',
+              transition: 'all 0.15s ease',
+              textAlign: 'left',
+            }}
+          >
+            <LayoutDashboard size={18} color={activeTab === 'overview' ? '#059669' : '#64748b'} />
+            <span style={{ flex: 1 }}>Dashboard</span>
+            {activeTab === 'overview' && <ChevronRight size={14} color="#059669" />}
+          </button>
 
-        <button
-          onClick={() => setActiveTab('orders')}
-          style={{
-            padding: '0.75rem 1.25rem',
-            fontWeight: 700,
-            fontSize: '0.9rem',
-            border: 'none',
-            background: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            color: activeTab === 'orders' ? '#4338ca' : 'var(--secondary-500)',
-            borderBottom: activeTab === 'orders' ? '3px solid #4338ca' : '3px solid transparent',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          <ShoppingBag size={16} />
-          Daftar Seluruh Order
-        </button>
+          {/* GROUP 2: KATALOG & INVENTARIS */}
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.06em', padding: '0.85rem 0.75rem 0.35rem 0.75rem' }}>
+            KATALOG & INVENTARIS
+          </div>
 
-        <button
-          onClick={() => setActiveTab('transactions')}
+          <button
+            onClick={() => { setActiveTab('medicines'); setIsSidebarOpen(false); }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.65rem 0.85rem',
+              borderRadius: '10px',
+              border: 'none',
+              cursor: 'pointer',
+              marginBottom: '0.25rem',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'medicines' ? 700 : 500,
+              color: activeTab === 'medicines' ? '#059669' : '#475569',
+              background: activeTab === 'medicines' ? '#ecfdf5' : 'transparent',
+              transition: 'all 0.15s ease',
+              textAlign: 'left',
+            }}
+          >
+            <Pill size={18} color={activeTab === 'medicines' ? '#059669' : '#64748b'} />
+            <span style={{ flex: 1 }}>Kelola Sediaan Obat</span>
+            {stats && stats.outOfStockMedicines > 0 && (
+              <span style={{ background: '#fee2e2', color: '#991b1b', fontSize: '0.7rem', fontWeight: 700, padding: '1px 6px', borderRadius: '999px' }}>
+                {stats.outOfStockMedicines}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('categories'); setIsSidebarOpen(false); }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.65rem 0.85rem',
+              borderRadius: '10px',
+              border: 'none',
+              cursor: 'pointer',
+              marginBottom: '0.25rem',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'categories' ? 700 : 500,
+              color: activeTab === 'categories' ? '#059669' : '#475569',
+              background: activeTab === 'categories' ? '#ecfdf5' : 'transparent',
+              transition: 'all 0.15s ease',
+              textAlign: 'left',
+            }}
+          >
+            <Layers size={18} color={activeTab === 'categories' ? '#059669' : '#64748b'} />
+            <span style={{ flex: 1 }}>Kategori Obat</span>
+          </button>
+
+          {/* GROUP 3: OPERASIONAL APOTEK */}
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.06em', padding: '0.85rem 0.75rem 0.35rem 0.75rem' }}>
+            OPERASIONAL APOTEK
+          </div>
+
+          <button
+            onClick={() => { setActiveTab('orders'); setIsSidebarOpen(false); }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.65rem 0.85rem',
+              borderRadius: '10px',
+              border: 'none',
+              cursor: 'pointer',
+              marginBottom: '0.25rem',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'orders' ? 700 : 500,
+              color: activeTab === 'orders' ? '#059669' : '#475569',
+              background: activeTab === 'orders' ? '#ecfdf5' : 'transparent',
+              transition: 'all 0.15s ease',
+              textAlign: 'left',
+            }}
+          >
+            <ShoppingBag size={18} color={activeTab === 'orders' ? '#059669' : '#64748b'} />
+            <span style={{ flex: 1 }}>Daftar Seluruh Order</span>
+            {stats && stats.pendingOrders > 0 && (
+              <span style={{ background: '#dbeafe', color: '#1e40af', fontSize: '0.7rem', fontWeight: 700, padding: '1px 6px', borderRadius: '999px' }}>
+                {stats.pendingOrders}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('transactions'); setIsSidebarOpen(false); }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.65rem 0.85rem',
+              borderRadius: '10px',
+              border: 'none',
+              cursor: 'pointer',
+              marginBottom: '0.25rem',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'transactions' ? 700 : 500,
+              color: activeTab === 'transactions' ? '#059669' : '#475569',
+              background: activeTab === 'transactions' ? '#ecfdf5' : 'transparent',
+              transition: 'all 0.15s ease',
+              textAlign: 'left',
+            }}
+          >
+            <CreditCard size={18} color={activeTab === 'transactions' ? '#059669' : '#64748b'} />
+            <span style={{ flex: 1 }}>Keuangan & Transaksi</span>
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.65rem 0.85rem',
+              borderRadius: '10px',
+              border: 'none',
+              cursor: 'pointer',
+              marginBottom: '0.25rem',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'users' ? 700 : 500,
+              color: activeTab === 'users' ? '#059669' : '#475569',
+              background: activeTab === 'users' ? '#ecfdf5' : 'transparent',
+              transition: 'all 0.15s ease',
+              textAlign: 'left',
+            }}
+          >
+            <Users size={18} color={activeTab === 'users' ? '#059669' : '#64748b'} />
+            <span style={{ flex: 1 }}>Manajemen Pengguna</span>
+          </button>
+
+          {/* GROUP 4: PENGATURAN & SISTEM AI */}
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.06em', padding: '0.85rem 0.75rem 0.35rem 0.75rem' }}>
+            PENGATURAN & AI
+          </div>
+
+          <button
+            onClick={() => { setActiveTab('ai-config'); setIsSidebarOpen(false); }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.65rem 0.85rem',
+              borderRadius: '10px',
+              border: 'none',
+              cursor: 'pointer',
+              marginBottom: '0.25rem',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'ai-config' ? 700 : 500,
+              color: activeTab === 'ai-config' ? '#059669' : '#475569',
+              background: activeTab === 'ai-config' ? '#ecfdf5' : 'transparent',
+              transition: 'all 0.15s ease',
+              textAlign: 'left',
+            }}
+          >
+            <Cpu size={18} color={activeTab === 'ai-config' ? '#059669' : '#64748b'} />
+            <span style={{ flex: 1 }}>Konfigurasi AI</span>
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('whatsapp'); setIsSidebarOpen(false); }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.65rem 0.85rem',
+              borderRadius: '10px',
+              border: 'none',
+              cursor: 'pointer',
+              marginBottom: '0.25rem',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'whatsapp' ? 700 : 500,
+              color: activeTab === 'whatsapp' ? '#059669' : '#475569',
+              background: activeTab === 'whatsapp' ? '#ecfdf5' : 'transparent',
+              transition: 'all 0.15s ease',
+              textAlign: 'left',
+            }}
+          >
+            <MessageSquare size={18} color={activeTab === 'whatsapp' ? '#059669' : '#64748b'} />
+            <span style={{ flex: 1 }}>Notifikasi WhatsApp</span>
+          </button>
+        </div>
+
+        {/* Sidebar Footer info & quick actions */}
+        <div
           style={{
-            padding: '0.75rem 1.25rem',
-            fontWeight: 700,
-            fontSize: '0.9rem',
-            border: 'none',
-            background: 'none',
-            cursor: 'pointer',
+            padding: '0.75rem 0.85rem',
+            borderTop: '1px solid #f1f5f9',
+            background: '#fafafa',
             display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            color: activeTab === 'transactions' ? '#4338ca' : 'var(--secondary-500)',
-            borderBottom: activeTab === 'transactions' ? '3px solid #4338ca' : '3px solid transparent',
-            transition: 'all 0.2s ease',
+            flexDirection: 'column',
+            gap: '0.35rem',
           }}
         >
-          <CreditCard size={16} />
-          Keuangan & Transaksi
-        </button>
-      </div>
+          {onNavigate && (
+            <button
+              onClick={() => onNavigate('home')}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 0.65rem',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                background: '#ffffff',
+                color: '#334155',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              title="Buka Toko Apotek Sehat"
+            >
+              <Store size={14} color="#059669" />
+              <span>Lihat Toko Publik</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              logout();
+              if (onNavigate) onNavigate('home');
+            }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 0.65rem',
+              borderRadius: '8px',
+              border: 'none',
+              background: '#fef2f2',
+              color: '#dc2626',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            title="Keluar dari akun admin"
+          >
+            <LogOut size={13} color="#dc2626" />
+            <span>Keluar (Logout)</span>
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '0.25rem', padding: '0 0.25rem' }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981' }} />
+            <span style={{ fontWeight: 600, color: '#64748b', fontSize: '0.68rem' }}>Sistem Apotek Aktif (v2.6)</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* ─── RIGHT WORKSPACE WRAPPER ─── */}
+      <div
+        className="admin-body-wrapper"
+        style={{
+          flex: 1,
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          minWidth: 0,
+        }}
+      >
+        {/* ─── DEDICATED TOPBAR NAVBAR ─── */}
+        <header
+          className="admin-topbar"
+          style={{
+            height: '64px',
+            background: '#ffffff',
+            borderBottom: '1px solid #e2e8f0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 1.75rem',
+            flexShrink: 0,
+            zIndex: 40,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            {/* Hamburger button for mobile */}
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="admin-hamburger-btn"
+              style={{
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 38,
+                height: 38,
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                background: '#ffffff',
+                cursor: 'pointer',
+                color: '#334155',
+              }}
+              title="Buka Menu Sidebar"
+            >
+              <Menu size={20} />
+            </button>
+
+            <div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                PORTAL ADMINISTRASI APOTEK
+              </div>
+              <h1 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
+                {activeTab === 'overview' && 'Dashboard & Statistik'}
+                {activeTab === 'medicines' && 'Sediaan & Stok Obat'}
+                {activeTab === 'categories' && 'Kategori Farmasi'}
+                {activeTab === 'orders' && 'Daftar Seluruh Order'}
+                {activeTab === 'transactions' && 'Keuangan & Transaksi'}
+                {activeTab === 'users' && 'Manajemen User & Staff'}
+                {activeTab === 'ai-config' && 'Konfigurasi AI Multi-Provider'}
+                {activeTab === 'whatsapp' && 'Gateway Notifikasi WhatsApp'}
+              </h1>
+            </div>
+          </div>
+
+          {/* Right Actions: Storefront Link, Sync Button, User Profile Pill with Dropdown */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {onNavigate && (
+              <button
+                onClick={() => onNavigate('home')}
+                className="hidden-mobile"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  padding: '0.45rem 0.85rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  background: '#f8fafc',
+                  color: '#334155',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Buka Toko Apotek Sehat"
+              >
+                <Store size={14} color="#059669" />
+                <span>Lihat Toko</span>
+              </button>
+            )}
+
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<RefreshCw size={13} />}
+              onClick={() => {
+                fetchStats();
+                if (activeTab === 'medicines') fetchMedicines();
+                if (activeTab === 'categories') fetchCategories();
+                if (activeTab === 'users') fetchUsers();
+                if (activeTab === 'orders') fetchOrders();
+                if (activeTab === 'transactions') fetchTransactions();
+                showToast('success', 'Data database disinkronkan.');
+              }}
+              style={{ fontSize: '0.78rem', padding: '0.45rem 0.85rem' }}
+            >
+              <span className="hidden-mobile">Sinkronkan</span>
+            </Button>
+
+            <NotificationDropdown
+              onNavigate={(view, data) => {
+                if (view === 'orders' || view === 'admin-dashboard') {
+                  setActiveTab('orders');
+                } else if (onNavigate) {
+                  onNavigate(view, data);
+                }
+              }}
+            />
+
+            {/* User Profile Pill with Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <div
+                onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.65rem',
+                  background: '#ffffff',
+                  padding: '0.35rem 0.8rem 0.35rem 0.45rem',
+                  borderRadius: '999px',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                }}
+              >
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #059669, #10b981)',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.78rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {user?.name ? user.name.slice(0, 2).toUpperCase() : 'AI'}
+                </div>
+                <div style={{ textAlign: 'left', lineHeight: 1.15 }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a' }}>
+                    {user?.name || 'Ade Irawan'}
+                  </div>
+                  <div style={{ fontSize: '0.66rem', fontWeight: 600, color: '#059669' }}>
+                    Administrator
+                  </div>
+                </div>
+                <ChevronDown size={14} color="#64748b" />
+              </div>
+
+              {/* Profile Dropdown */}
+              {isProfileDropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    width: '210px',
+                    background: '#ffffff',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                    zIndex: 100,
+                    padding: '0.4rem',
+                  }}
+                >
+                  <div style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f1f5f9' }}>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f172a' }}>{user?.name || 'Ade Irawan'}</div>
+                    <div style={{ fontSize: '0.7rem', color: '#64748b', wordBreak: 'break-all' }}>{user?.email || 'admin'}</div>
+                  </div>
+                  {onNavigate && (
+                    <button
+                      onClick={() => {
+                        setIsProfileDropdownOpen(false);
+                        onNavigate('home');
+                      }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.5rem 0.75rem',
+                        background: 'none',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '0.78rem',
+                        color: '#334155',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <Store size={14} color="#059669" />
+                      <span>Ke Beranda Toko</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      logout();
+                      if (onNavigate) onNavigate('home');
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem 0.75rem',
+                      background: 'none',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '0.78rem',
+                      color: '#dc2626',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <LogOut size={14} color="#dc2626" />
+                    <span>Keluar (Logout)</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* ─── MAIN SCROLLABLE CONTENT AREA ─── */}
+        <main
+          className="admin-main-content"
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '1.75rem 2rem 5rem 2rem',
+          }}
+        >
+
+        {/* ─── WELCOME BANNER CARD (From Photo Concept) ─── */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #134e4a 0%, #064e3b 50%, #022c22 100%)',
+            color: '#ffffff',
+            borderRadius: '16px',
+            padding: '1.75rem 2rem',
+            boxShadow: '0 10px 25px rgba(6, 78, 59, 0.25)',
+            marginBottom: '1.75rem',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              right: '-50px',
+              top: '-50px',
+              width: 200,
+              height: 200,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(16, 185, 129, 0.2) 0%, transparent 70%)',
+              pointerEvents: 'none',
+            }}
+          />
+
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+            <span
+              style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                backdropFilter: 'blur(4px)',
+                padding: '3px 10px',
+                borderRadius: '999px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                color: '#a7f3d0',
+                border: '1px solid rgba(167, 243, 208, 0.3)',
+              }}
+            >
+              Administrator
+            </span>
+            <span
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                padding: '3px 10px',
+                borderRadius: '999px',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                color: '#e2e8f0',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <ShieldCheck size={12} color="#34d399" /> Sesi Terverifikasi
+            </span>
+          </div>
+
+          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: '0 0 0.5rem 0', letterSpacing: '-0.02em' }}>
+            Selamat Datang, {user?.name || 'Ade Irawan'}! 👋
+          </h2>
+
+          <p style={{ margin: '0 0 1.25rem 0', color: '#d1fae5', fontSize: '0.88rem', maxWidth: '780px', lineHeight: 1.5 }}>
+            Anda masuk sebagai <strong>ADMINISTRATOR UTAMA</strong>. Kelola stok obat, antrean resep dokter, laporan transaksi keuangan, dan integrasi kecerdasan buatan apotek.
+          </p>
+
+          <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setActiveTab('medicines')}
+              style={{
+                padding: '0.55rem 1rem',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.2)',
+                background: '#ffffff',
+                color: '#064e3b',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+              }}
+            >
+              <Pill size={14} color="#059669" /> Jelajahi Katalog Obat
+            </button>
+
+            <button
+              onClick={() => setActiveTab('orders')}
+              style={{
+                padding: '0.55rem 1rem',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.2)',
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <ShoppingBag size={14} color="#a7f3d0" /> Antrean Pesanan ({stats?.pendingOrders || 0})
+            </button>
+
+            <button
+              onClick={() => setActiveTab('ai-config')}
+              style={{
+                padding: '0.55rem 1rem',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.2)',
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <Cpu size={14} color="#a7f3d0" /> Konfigurasi AI
+            </button>
+
+            <button
+              onClick={() => setActiveTab('whatsapp')}
+              style={{
+                padding: '0.55rem 1rem',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.2)',
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <MessageSquare size={14} color="#a7f3d0" /> WhatsApp Fonnte
+            </button>
+          </div>
+        </div>
+
+        {/* ─── ROLE-BASED ADMIN NOTIFICATION BANNERS ─── */}
+        {stats && (
+          <>
+            {(stats.outOfStockMedicines > 0 || stats.lowStockMedicines > 0) && (
+              <div
+                style={{
+                  background: '#fff1f2',
+                  border: '1px solid #fecdd3',
+                  borderLeft: '5px solid #e11d48',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '0.875rem 1.25rem',
+                  marginBottom: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
+                  color: '#9f1239',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <AlertTriangle size={20} color="#e11d48" />
+                  <div style={{ fontSize: '0.88rem' }}>
+                    <strong style={{ fontSize: '0.92rem' }}>Peringatan Inventaris Stok:</strong> Terdapat{' '}
+                    <strong>{stats.outOfStockMedicines} obat stok habis</strong> dan{' '}
+                    <strong>{stats.lowStockMedicines} obat stok menipis (≤ 10 unit)</strong>.
+                  </div>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setActiveTab('medicines')}
+                  style={{ background: '#e11d48', borderColor: '#e11d48', fontSize: '0.8rem' }}
+                >
+                  Kelola Stok Obat ({stats.outOfStockMedicines + stats.lowStockMedicines})
+                </Button>
+              </div>
+            )}
+
+            {stats.pendingOrders > 0 && (
+              <div
+                style={{
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderLeft: '5px solid #2563eb',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '0.875rem 1.25rem',
+                  marginBottom: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
+                  color: '#1e40af',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Clock size={20} color="#2563eb" />
+                  <div style={{ fontSize: '0.88rem' }}>
+                    <strong style={{ fontSize: '0.92rem' }}>Notifikasi Pesanan:</strong> Terdapat{' '}
+                    <strong>{stats.pendingOrders} pesanan berstatus pending</strong> menunggu verifikasi staf.
+                  </div>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setActiveTab('orders')}
+                  style={{ fontSize: '0.8rem' }}
+                >
+                  Lihat Antrean ({stats.pendingOrders})
+                </Button>
+              </div>
+            )}
+          </>
+        )}
 
       {/* ==================================================================== */}
       {/* TAB 1: EXECUTIVE STATS OVERVIEW                                       */}
@@ -1666,6 +2241,20 @@ export const AdminDashboardView: React.FC = () => {
       )}
 
       {/* ==================================================================== */}
+      {/* TAB 7: KONFIGURASI AI PROVIDER                                       */}
+      {/* ==================================================================== */}
+      {activeTab === 'ai-config' && (
+        <AiProviderConfigView />
+      )}
+
+      {/* ==================================================================== */}
+      {/* TAB 8: KONFIGURASI NOTIFIKASI WHATSAPP (FONNTE)                      */}
+      {/* ==================================================================== */}
+      {activeTab === 'whatsapp' && (
+        <WhatsappConfigView />
+      )}
+
+      {/* ==================================================================== */}
       {/* MODAL: MEDICINE ADD / EDIT FORM                                      */}
       {/* ==================================================================== */}
       {isMedModalOpen && (
@@ -1985,6 +2574,34 @@ export const AdminDashboardView: React.FC = () => {
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
       />
+      </main>
+      </div>
+
+      {/* Responsive styles for sidebar */}
+      <style>{`
+        @media (max-width: 960px) {
+          .admin-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            transform: translateX(-100%);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+          }
+          .admin-sidebar.open {
+            transform: translateX(0) !important;
+          }
+          .admin-sidebar-close-btn {
+            display: block !important;
+          }
+          .admin-hamburger-btn {
+            display: inline-flex !important;
+          }
+          .admin-main-content {
+            padding: 1.25rem 1rem 5rem 1rem !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

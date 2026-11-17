@@ -1,14 +1,15 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
 
 export interface AppNotification {
   id: string;
-  type: 'order_status' | 'prescription_status' | 'low_stock' | 'new_order' | 'info';
+  type: 'order_status' | 'order_approved' | 'order_rejected' | 'prescription_status' | 'low_stock' | 'new_order' | 'info';
   title: string;
   message: string;
   severity: 'info' | 'success' | 'warning' | 'error';
   timestamp: Date;
   read: boolean;
+  orderId?: string;
   actionView?: string;
   actionData?: any;
 }
@@ -16,8 +17,8 @@ export interface AppNotification {
 interface NotificationContextType {
   notifications: AppNotification[];
   unreadCount: number;
-  markAsRead: (id: string) => void;
-  markAllAsRead: () => void;
+  markAsRead: (id: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
   clearAll: () => void;
   refreshNotifications: () => Promise<void>;
   addNotification: (notif: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => void;
@@ -28,28 +29,15 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const isFetchingRef = useRef(false);
 
-  const getStorageKey = useCallback(() => {
-    return user ? `apotek_notifications_${user.id}` : 'apotek_notifications_guest';
-  }, [user]);
-
-  // Load read status from localStorage
-  const loadReadIds = useCallback((): Set<string> => {
-    try {
-      const raw = localStorage.getItem(`${getStorageKey()}_read`);
-      return raw ? new Set(JSON.parse(raw)) : new Set();
-    } catch {
-      return new Set();
-    }
-  }, [getStorageKey]);
-
-  const saveReadIds = useCallback((readIds: Set<string>) => {
-    try {
-      localStorage.setItem(`${getStorageKey()}_read`, JSON.stringify(Array.from(readIds)));
-    } catch {
-      // ignore
-    }
-  }, [getStorageKey]);
+  const getHeaders = useCallback((): Record<string, string> => {
+    const token = localStorage.getItem('apotek_auth_token') || localStorage.getItem('apotek_token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  }, []);
 
   const refreshNotifications = useCallback(async () => {
     if (!isAuthenticated || !user) {
@@ -57,245 +45,140 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return;
     }
 
-    const token = localStorage.getItem('apotek_auth_token') || localStorage.getItem('apotek_token');
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
-
-    const readIds = loadReadIds();
-    const generated: AppNotification[] = [];
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
 
     try {
-      if (user.role === 'CUSTOMER') {
-        // Fetch customer's orders
-        const res = await fetch('/api/orders', { headers });
-        if (res.ok) {
-          const json = await res.json();
-          const orders = json.data?.orders || [];
+      const headers = getHeaders();
+      const res = await fetch('/api/notifications', { headers });
 
-          orders.forEach((order: any) => {
-            const date = new Date(order.updatedAt || order.createdAt);
-            const shortId = order.shortId || order.id.slice(-8).toUpperCase();
+      if (res.ok) {
+        const json = await res.json();
+        const dbNotifs = json.data?.notifications || [];
 
-            // 1. Prescription status
-            if (order.requiresPrescription) {
-              if (order.status === 'PENDING_VERIFICATION') {
-                const id = `notif-order-pv-${order.id}`;
-                generated.push({
-                  id,
-                  type: 'prescription_status',
-                  title: `Resep Sedang Diverifikasi (#${shortId})`,
-                  message: 'Resep dokter Anda sedang diperiksa oleh tim apoteker kami.',
-                  severity: 'info',
-                  timestamp: date,
-                  read: readIds.has(id),
-                  actionView: 'order-detail',
-                  actionData: { orderId: order.id },
-                });
-              } else if (order.status === 'PROCESSING' || order.status === 'READY_FOR_PICKUP' || order.status === 'SHIPPED') {
-                const id = `notif-order-rx-ok-${order.id}`;
-                generated.push({
-                  id,
-                  type: 'prescription_status',
-                  title: `Resep Disetujui Apoteker (#${shortId})`,
-                  message: 'Resep dokter Anda telah diverifikasi dan pesanan sedang disiapkan.',
-                  severity: 'success',
-                  timestamp: date,
-                  read: readIds.has(id),
-                  actionView: 'order-detail',
-                  actionData: { orderId: order.id },
-                });
-              } else if (order.status === 'CANCELLED' && order.rejectionReason) {
-                const id = `notif-order-rx-rej-${order.id}`;
-                generated.push({
-                  id,
-                  type: 'prescription_status',
-                  title: `Resep Ditolak Apoteker (#${shortId})`,
-                  message: `Alasan: "${order.rejectionReason}". Harap periksa detail pesanan.`,
-                  severity: 'error',
-                  timestamp: date,
-                  read: readIds.has(id),
-                  actionView: 'order-detail',
-                  actionData: { orderId: order.id },
-                });
+        const mapped: AppNotification[] = dbNotifs.map((n: any) => {
+          let severity: AppNotification['severity'] = 'info';
+          if (n.type === 'order_approved') severity = 'success';
+          else if (n.type === 'order_rejected') severity = 'error';
+          else if (n.type === 'low_stock') severity = 'warning';
+          else if (n.type === 'new_order') severity = 'info';
+          else if (n.orderStatus === 'COMPLETED' || n.orderStatus === 'READY_FOR_PICKUP') severity = 'success';
+          else if (n.orderStatus === 'CANCELLED') severity = 'error';
+
+          let actionView = 'my-orders';
+          let actionData: any = undefined;
+
+          if (user.role === 'CUSTOMER') {
+            if (n.orderId) {
+              actionView = 'order-detail';
+              actionData = { orderId: n.orderId };
+            } else {
+              actionView = 'my-orders';
+            }
+          } else if (user.role === 'STAFF') {
+            actionView = 'staff-dashboard';
+          } else if (user.role === 'ADMIN') {
+            actionView = 'admin-dashboard';
+          }
+
+          return {
+            id: n.id,
+            type: n.type || 'order_status',
+            title: n.title,
+            message: n.message,
+            severity,
+            timestamp: new Date(n.createdAt),
+            read: Boolean(n.isRead),
+            orderId: n.orderId || undefined,
+            actionView,
+            actionData,
+          };
+        });
+
+        // For Admin & Staff: additionally fetch real-time low-stock alerts if medicines are out of stock
+        if (user.role === 'ADMIN' || user.role === 'STAFF') {
+          try {
+            const medsRes = await fetch('/api/medicines', { headers });
+            if (medsRes.ok) {
+              const medsJson = await medsRes.json();
+              const medicines = medsJson.data?.medicines || [];
+              const outOfStock = medicines.filter((m: any) => m.stock === 0 && m.isActive);
+
+              if (outOfStock.length > 0) {
+                const oosId = `sys-oos-alert-${outOfStock.length}`;
+                // Only prepend if not already in list
+                if (!mapped.some((item) => item.id === oosId)) {
+                  mapped.unshift({
+                    id: oosId,
+                    type: 'low_stock',
+                    title: `Peringatan: ${outOfStock.length} Obat Stok Habis`,
+                    message: `Obat: ${outOfStock.map((m: any) => m.name).slice(0, 3).join(', ')}${outOfStock.length > 3 ? '...' : ''}. Segera lakukan restock.`,
+                    severity: 'error',
+                    timestamp: new Date(),
+                    read: false,
+                    actionView: user.role === 'ADMIN' ? 'admin-dashboard' : 'staff-dashboard',
+                  });
+                }
               }
             }
-
-            // 2. Order status updates
-            if (order.status === 'READY_FOR_PICKUP') {
-              const id = `notif-order-pickup-${order.id}`;
-              generated.push({
-                id,
-                type: 'order_status',
-                title: `Pesanan Siap Diambil (#${shortId})`,
-                message: 'Pesanan obat Anda sudah selesai dikemas dan siap diambil di apotek.',
-                severity: 'success',
-                timestamp: date,
-                read: readIds.has(id),
-                actionView: 'order-detail',
-                actionData: { orderId: order.id },
-              });
-            } else if (order.status === 'SHIPPED') {
-              const id = `notif-order-shipped-${order.id}`;
-              generated.push({
-                id,
-                type: 'order_status',
-                title: `Pesanan Sedang Dikirim (#${shortId})`,
-                message: 'Kurir apotek sedang mengantarkan pesanan obat ke alamat Anda.',
-                severity: 'info',
-                timestamp: date,
-                read: readIds.has(id),
-                actionView: 'order-detail',
-                actionData: { orderId: order.id },
-              });
-            } else if (order.status === 'COMPLETED') {
-              const id = `notif-order-comp-${order.id}`;
-              generated.push({
-                id,
-                type: 'order_status',
-                title: `Pesanan Selesai (#${shortId})`,
-                message: 'Terima kasih telah berbelanja di Apotek Sehat AI.',
-                severity: 'success',
-                timestamp: date,
-                read: readIds.has(id),
-                actionView: 'order-detail',
-                actionData: { orderId: order.id },
-              });
-            }
-          });
-        }
-      } else if (user.role === 'STAFF') {
-        // Fetch staff orders
-        const res = await fetch('/api/staff/orders', { headers });
-        if (res.ok) {
-          const json = await res.json();
-          const orders = json.data?.orders || [];
-
-          // Pending verification
-          const pendingVerif = orders.filter((o: any) => o.status === 'PENDING_VERIFICATION');
-          if (pendingVerif.length > 0) {
-            const id = `notif-staff-pending-verif-${pendingVerif.length}-${orders[0]?.id}`;
-            generated.push({
-              id,
-              type: 'prescription_status',
-              title: `${pendingVerif.length} Resep Menunggu Verifikasi`,
-              message: 'Terdapat resep dokter baru dari pelanggan yang perlu diperiksa keabsahannya.',
-              severity: 'warning',
-              timestamp: new Date(),
-              read: readIds.has(id),
-              actionView: 'staff-dashboard',
-            });
-          }
-
-          // New incoming orders (PENDING_PAYMENT or PROCESSING)
-          const newOrders = orders.filter((o: any) => o.status === 'PROCESSING');
-          if (newOrders.length > 0) {
-            const id = `notif-staff-new-orders-${newOrders.length}-${orders[0]?.id}`;
-            generated.push({
-              id,
-              type: 'new_order',
-              title: `${newOrders.length} Pesanan Baru Siap Diproses`,
-              message: 'Pesanan telah dikonfirmasi dan menunggu peracikan/pengemasan.',
-              severity: 'info',
-              timestamp: new Date(),
-              read: readIds.has(id),
-              actionView: 'staff-dashboard',
-            });
+          } catch {
+            // ignore non-critical inventory check
           }
         }
-      } else if (user.role === 'ADMIN') {
-        // Fetch admin stats & low stock medicines
-        const [statsRes, medsRes] = await Promise.all([
-          fetch('/api/admin/stats', { headers }),
-          fetch('/api/admin/medicines?limit=50', { headers }),
-        ]);
 
-        if (statsRes.ok && medsRes.ok) {
-          const statsJson = await statsRes.json();
-          const medsJson = await medsRes.json();
-          const stats = statsJson.data?.stats;
-          const medicines = medsJson.data?.medicines || [];
-
-          // Low stock / out of stock
-          const outOfStock = medicines.filter((m: any) => m.stock === 0 && m.isActive);
-          const lowStock = medicines.filter((m: any) => m.stock > 0 && m.stock <= 10 && m.isActive);
-
-          if (outOfStock.length > 0) {
-            const id = `notif-admin-oos-${outOfStock.length}`;
-            generated.push({
-              id,
-              type: 'low_stock',
-              title: `Peringatan: ${outOfStock.length} Obat Stok Habis`,
-              message: `Obat: ${outOfStock.map((m: any) => m.name).slice(0, 3).join(', ')}${outOfStock.length > 3 ? '...' : ''}. Segera lakukan restock.`,
-              severity: 'error',
-              timestamp: new Date(),
-              read: readIds.has(id),
-              actionView: 'admin-dashboard',
-            });
-          }
-
-          if (lowStock.length > 0) {
-            const id = `notif-admin-lowstock-${lowStock.length}`;
-            generated.push({
-              id,
-              type: 'low_stock',
-              title: `Peringatan: ${lowStock.length} Obat Stok Menipis`,
-              message: `Stok sisa ≤ 10 unit: ${lowStock.map((m: any) => `${m.name} (${m.stock})`).slice(0, 3).join(', ')}.`,
-              severity: 'warning',
-              timestamp: new Date(),
-              read: readIds.has(id),
-              actionView: 'admin-dashboard',
-            });
-          }
-
-          // New orders
-          if (stats?.pendingOrders > 0) {
-            const id = `notif-admin-pending-${stats.pendingOrders}`;
-            generated.push({
-              id,
-              type: 'new_order',
-              title: `${stats.pendingOrders} Pesanan Memerlukan Tindakan`,
-              message: 'Ada pesanan baru menunggu verifikasi atau proses staf.',
-              severity: 'info',
-              timestamp: new Date(),
-              read: readIds.has(id),
-              actionView: 'admin-dashboard',
-            });
-          }
-        }
+        setNotifications(mapped);
       }
-
-      setNotifications(generated);
     } catch (err) {
-      console.warn('[Notifications] Error fetching notifications:', err);
+      console.warn('[Notifications] Failed to fetch:', err);
+    } finally {
+      isFetchingRef.current = false;
     }
-  }, [isAuthenticated, user, loadReadIds]);
+  }, [isAuthenticated, user, getHeaders]);
 
+  // Initial fetch and automatic background polling every 8 seconds
   useEffect(() => {
     refreshNotifications();
-    const interval = setInterval(refreshNotifications, 30000); // 30s poll
+    const interval = setInterval(refreshNotifications, 8000);
     return () => clearInterval(interval);
   }, [refreshNotifications]);
 
   const markAsRead = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      // Optimistic local update
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
-      const readIds = loadReadIds();
-      readIds.add(id);
-      saveReadIds(readIds);
+
+      // If it's a persistent DB notification (not a virtual sys-* one)
+      if (!id.startsWith('sys-')) {
+        try {
+          const headers = getHeaders();
+          await fetch(`/api/notifications/${id}/read`, {
+            method: 'PUT',
+            headers,
+          });
+        } catch (err) {
+          console.warn('[Notifications] Failed to mark as read on server:', err);
+        }
+      }
     },
-    [loadReadIds, saveReadIds]
+    [getHeaders]
   );
 
-  const markAllAsRead = useCallback(() => {
+  const markAllAsRead = useCallback(async () => {
+    // Optimistic local update
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    const readIds = loadReadIds();
-    notifications.forEach((n) => readIds.add(n.id));
-    saveReadIds(readIds);
-  }, [loadReadIds, saveReadIds, notifications]);
+
+    try {
+      const headers = getHeaders();
+      await fetch('/api/notifications/read-all', {
+        method: 'PUT',
+        headers,
+      });
+    } catch (err) {
+      console.warn('[Notifications] Failed to mark all as read on server:', err);
+    }
+  }, [getHeaders]);
 
   const clearAll = useCallback(() => {
     setNotifications([]);

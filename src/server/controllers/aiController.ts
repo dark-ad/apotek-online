@@ -15,6 +15,8 @@ import {
   getUserListContext,
 } from '../aiDataAccess';
 import type { AiAccessLevel } from '../aiDataAccess';
+import { decryptApiKey } from '../crypto';
+import { dispatchProviderChat, type AiProviderType } from '../services/aiProviderService';
 
 // buildFullAppContext dipindah ke src/server/aiDataAccess.ts (satu sumber kebenaran).
 // Alias dipertahankan agar kode lama / tes tidak rusak.
@@ -1232,7 +1234,94 @@ export async function handleAiChat(
   const appContext = await buildFullAppContext(authUser, userMessage);
   const systemPrompt = buildSystemPrompt(appContext);
 
-  // 3. PRIORITY 1: NVIDIA NIM AI API (Llama 3.2 11B Vision / LLM)
+  // ═══════════════════════════════════════════════════════════════════
+  // PRIORITY 1: DATABASE-CONFIGURED ACTIVE PROVIDER
+  // Menggunakan provider AI yang dikonfigurasi admin melalui dashboard
+  // ═══════════════════════════════════════════════════════════════════
+  try {
+    const activeProvider = await prisma.aiProvider.findFirst({
+      where: { isActive: true, isVerified: true },
+    });
+
+    if (activeProvider && activeProvider.apiKeyEncrypted) {
+      try {
+        const decryptedKey = decryptApiKey(activeProvider.apiKeyEncrypted);
+        const dbReply = await dispatchProviderChat(
+          activeProvider.providerType as AiProviderType,
+          activeProvider.baseUrl,
+          decryptedKey,
+          activeProvider.modelId,
+          systemPrompt,
+          userMessage,
+          history
+        );
+
+        if (dbReply) {
+          const finalReply = containsUnsolicitedCode(dbReply)
+            ? OUT_OF_SCOPE_REFUSAL
+            : dbReply;
+          sendJson(res, 200, {
+            success: true,
+            data: {
+              reply: finalReply,
+              model: `${activeProvider.name}/${activeProvider.modelId}`,
+              accessLevel,
+            },
+          });
+          return;
+        }
+      } catch (providerErr: any) {
+        console.warn(
+          `[AI] Active provider "${activeProvider.name}" failed, trying fallback:`,
+          providerErr?.message
+        );
+
+        // Try fallback provider if configured
+        const fallbackProvider = await prisma.aiProvider.findFirst({
+          where: { isFallback: true, isVerified: true, isActive: false },
+        });
+
+        if (fallbackProvider && fallbackProvider.apiKeyEncrypted) {
+          try {
+            const fallbackKey = decryptApiKey(fallbackProvider.apiKeyEncrypted);
+            const fallbackReply = await dispatchProviderChat(
+              fallbackProvider.providerType as AiProviderType,
+              fallbackProvider.baseUrl,
+              fallbackKey,
+              fallbackProvider.modelId,
+              systemPrompt,
+              userMessage,
+              history
+            );
+
+            if (fallbackReply) {
+              const finalReply = containsUnsolicitedCode(fallbackReply)
+                ? OUT_OF_SCOPE_REFUSAL
+                : fallbackReply;
+              sendJson(res, 200, {
+                success: true,
+                data: {
+                  reply: finalReply,
+                  model: `${fallbackProvider.name}/${fallbackProvider.modelId} (fallback)`,
+                  accessLevel,
+                },
+              });
+              return;
+            }
+          } catch (fbErr: any) {
+            console.warn('[AI] Fallback provider failed too:', fbErr?.message);
+          }
+        }
+      }
+    }
+  } catch (dbErr: any) {
+    console.warn('[AI] Error querying DB providers:', dbErr?.message);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // PRIORITY 2: ENV-VAR FALLBACK — NVIDIA NIM API
+  // Backward-compatible: jika belum ada provider di DB, gunakan env vars
+  // ═══════════════════════════════════════════════════════════════════
   if (NVIDIA_API_KEY && NVIDIA_API_KEY.startsWith('nvapi-')) {
     try {
       const nvidiaReply = await callNvidiaChat(systemPrompt, userMessage, history);
@@ -1255,7 +1344,7 @@ export async function handleAiChat(
     }
   }
 
-  // 4. PRIORITY 2: Google Gemini AI
+  // PRIORITY 3: ENV-VAR FALLBACK — Google Gemini
   const isGeminiConfigured =
     GEMINI_API_KEY &&
     GEMINI_API_KEY !== 'your-gemini-api-key-here' &&
@@ -1300,7 +1389,7 @@ export async function handleAiChat(
     }
   }
 
-  // 5. PRIORITY 3: High-intelligence built-in catalog & database assistant
+  // PRIORITY 4: High-intelligence built-in catalog & database assistant
   try {
     const localReply = await generateLocalAiReply(userMessage, authUser);
     sendJson(res, 200, {

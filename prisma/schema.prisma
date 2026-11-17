@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -25,6 +25,7 @@ model User {
   // Relasi: 1 User (Customer) memiliki banyak Order dan CartItem
   orders     Order[]
   cartItems  CartItem[]
+  notifications Notification[]
 
   @@index([email])
   @@index([role])
@@ -88,6 +89,7 @@ model Order {
   // Relasi
   customer        User          @relation(fields: [customerId], references: [id], onDelete: Cascade)
   items           OrderItem[]
+  notifications   Notification[]
 
   @@index([customerId])
   @@index([status])
@@ -130,3 +132,68 @@ model CartItem {
   @@index([medicineId])
   @@map("cart_items")
 }
+
+model AiProvider {
+  id               String    @id @default(cuid())
+  providerType     String    @map("provider_type") // gemini | openai | nvidia | groq | openrouter | deepseek | mistral | anthropic | custom
+  name             String
+  baseUrl          String    @map("base_url")
+  apiKeyEncrypted  String?   @map("api_key_encrypted")
+  apiKeyMasked     String?   @map("api_key_masked")
+  modelId          String    @map("model_id")
+  isActive         Boolean   @default(false) @map("is_active")
+  isVerified       Boolean   @default(false) @map("is_verified")
+  connectionStatus String    @default("UNVERIFIED") @map("connection_status") // CONNECTED | FAILED | UNVERIFIED
+  lastTestedAt     DateTime? @map("last_tested_at")
+  lastError        String?   @map("last_error")
+  isFallback       Boolean   @default(false) @map("is_fallback")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([isActive])
+  @@index([providerType])
+  @@map("ai_providers")
+}
+
+model WhatsappSetting {
+  id                   String    @id @default("default")
+  provider             String    @default("fonnte") // fonnte
+  apiTokenEncrypted    String?   @map("api_token_encrypted")
+  apiTokenMasked       String?   @map("api_token_masked")
+  adminPhone           String    @default("085767646273") @map("admin_phone")
+  isEnabled            Boolean   @default(true) @map("is_enabled")
+  notifyOnNewOrder     Boolean   @default(true) @map("notify_on_new_order")
+  notifyOnStatusChange Boolean   @default(true) @map("notify_on_status_change")
+  notifyCustomer       Boolean   @default(true) @map("notify_customer")
+  senderName           String    @default("APOTEK SEHAT") @map("sender_name")
+  lastTestedAt         DateTime? @map("last_tested_at")
+  lastTestStatus       String?   @map("last_test_status")
+  lastTestMessage      String?   @map("last_test_message")
+  deviceInfo           String?   @map("device_info")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@map("whatsapp_settings")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String
+  message   String
+  type      String   @default("order_status") // new_order | order_approved | order_rejected | order_status | low_stock | prescription_status | info
+  orderId   String?  @map("order_id")
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relasi
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([orderId])
+  @@index([createdAt])
+  @@map("notifications")
+}
+

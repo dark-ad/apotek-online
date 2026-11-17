@@ -40,6 +40,22 @@ import {
   handleUpdateTelegramConfig,
 } from './controllers/telegramController';
 import {
+  handleGetWhatsappSettings,
+  handleUpdateWhatsappSettings,
+  handleTestWhatsapp,
+} from './controllers/whatsappController';
+import {
+  handleGetAiProviders,
+  handleGetAiProviderDetail,
+  handleCreateAiProvider,
+  handleUpdateAiProvider,
+  handleDeleteAiProvider,
+  handleSetActiveAiProvider,
+  handleSetFallbackAiProvider,
+  handleTestAiConnection,
+  handleFetchAiModels,
+} from './controllers/adminAiProviderController';
+import {
   handleGetCategories,
   handleGetMedicines,
   handleGetMedicineById,
@@ -59,6 +75,12 @@ import {
   handleUploadPrescription,
 } from './controllers/orderController';
 import { handleAiChat, handleAiDataSummary } from './controllers/aiController';
+import {
+  handleGetNotifications,
+  handleMarkNotificationAsRead,
+  handleMarkAllNotificationsAsRead,
+  handleDeleteNotification,
+} from './controllers/notificationController';
 
 export * from './types';
 export * from './utils';
@@ -218,6 +240,73 @@ export async function handleApiRequest(
       return true;
     }
 
+    // Admin WhatsApp (Fonnte) Notification Management
+    if (pathname === '/api/admin/whatsapp/settings' && method === 'GET') {
+      await handleGetWhatsappSettings(req, res);
+      return true;
+    }
+
+    if (pathname === '/api/admin/whatsapp/settings' && method === 'PUT') {
+      await handleUpdateWhatsappSettings(req, res);
+      return true;
+    }
+
+    if (pathname === '/api/admin/whatsapp/test' && method === 'POST') {
+      await handleTestWhatsapp(req, res);
+      return true;
+    }
+
+    // Admin AI Multi-Provider Configuration
+    if (pathname === '/api/admin/ai-providers/test-connection' && method === 'POST') {
+      await handleTestAiConnection(req, res);
+      return true;
+    }
+
+    if (pathname === '/api/admin/ai-providers/fetch-models' && method === 'POST') {
+      await handleFetchAiModels(req, res);
+      return true;
+    }
+
+    if (pathname === '/api/admin/ai-providers' && method === 'GET') {
+      await handleGetAiProviders(req, res);
+      return true;
+    }
+
+    if (pathname === '/api/admin/ai-providers' && method === 'POST') {
+      await handleCreateAiProvider(req, res);
+      return true;
+    }
+
+    if (pathname.startsWith('/api/admin/ai-providers/') && pathname.endsWith('/set-active') && method === 'POST') {
+      const id = pathname.slice('/api/admin/ai-providers/'.length, -'/set-active'.length);
+      await handleSetActiveAiProvider(req, res, id);
+      return true;
+    }
+
+    if (pathname.startsWith('/api/admin/ai-providers/') && pathname.endsWith('/set-fallback') && method === 'POST') {
+      const id = pathname.slice('/api/admin/ai-providers/'.length, -'/set-fallback'.length);
+      await handleSetFallbackAiProvider(req, res, id);
+      return true;
+    }
+
+    if (pathname.startsWith('/api/admin/ai-providers/') && method === 'GET') {
+      const id = pathname.slice('/api/admin/ai-providers/'.length);
+      await handleGetAiProviderDetail(req, res, id);
+      return true;
+    }
+
+    if (pathname.startsWith('/api/admin/ai-providers/') && method === 'PUT') {
+      const id = pathname.slice('/api/admin/ai-providers/'.length);
+      await handleUpdateAiProvider(req, res, id);
+      return true;
+    }
+
+    if (pathname.startsWith('/api/admin/ai-providers/') && method === 'DELETE') {
+      const id = pathname.slice('/api/admin/ai-providers/'.length);
+      await handleDeleteAiProvider(req, res, id);
+      return true;
+    }
+
     // -----------------------------------------------------------------
     // 3. Staff Routes (Staff & Admin)
     // -----------------------------------------------------------------
@@ -340,6 +429,31 @@ export async function handleApiRequest(
     if (pathname === '/api/upload/prescription' && method === 'POST') {
       if (!checkRateLimit(req, res, 'upload', RATE_LIMIT_CONFIGS.UPLOAD)) return true;
       await handleUploadPrescription(req, res);
+      return true;
+    }
+
+    // -----------------------------------------------------------------
+    // 7b. In-App Notification Routes
+    // -----------------------------------------------------------------
+    if (pathname === '/api/notifications' && method === 'GET') {
+      await handleGetNotifications(req, res);
+      return true;
+    }
+
+    if (pathname === '/api/notifications/read-all' && (method === 'PUT' || method === 'POST')) {
+      await handleMarkAllNotificationsAsRead(req, res);
+      return true;
+    }
+
+    if (pathname.startsWith('/api/notifications/') && pathname.endsWith('/read') && method === 'PUT') {
+      const id = pathname.slice('/api/notifications/'.length, -'/read'.length);
+      await handleMarkNotificationAsRead(req, res, id);
+      return true;
+    }
+
+    if (pathname.startsWith('/api/notifications/') && method === 'DELETE') {
+      const id = pathname.slice('/api/notifications/'.length);
+      await handleDeleteNotification(req, res, id);
       return true;
     }
 

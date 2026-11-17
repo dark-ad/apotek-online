@@ -4,6 +4,12 @@ import {
   notifyOrderStatusChanged,
   notifyLowStock,
 } from '../services/telegramService';
+import { notifyOrderStatusChangedWhatsapp } from '../services/whatsappService';
+import {
+  notifyOrderApprovedInApp,
+  notifyOrderRejectedInApp,
+  notifyOrderStatusChangedInApp,
+} from '../services/notificationService';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { prisma } from '../../lib/db';
 import { sendJson, parseJsonBody, requireAuth, parseIntSafe } from '../utils';
@@ -203,6 +209,7 @@ export async function handleVerifyPrescription(
 
   const order = await prisma.order.findUnique({
     where: { id },
+    include: { customer: true },
   });
 
   if (!order) {
@@ -240,17 +247,38 @@ export async function handleVerifyPrescription(
       },
     });
 
-    // Telegram Notification: Prescription Rejected
+    // Notification Dispatch: In-App DB, Telegram, WhatsApp
     Promise.resolve().then(async () => {
       try {
+        // 1. In-App Notification to Customer
+        await notifyOrderRejectedInApp({
+          id: updated.id,
+          shortId: updated.id.slice(-8).toUpperCase(),
+          customerId: order.customerId,
+          reason,
+        });
+
+        // 2. Telegram Notification
         await notifyPrescriptionRejected({
           id: updated.id,
           shortId: updated.id.slice(-8).toUpperCase(),
           verifierName: authUser.name,
           reason,
         });
+
+        // WhatsApp Notification (Fonnte): Notify Customer Prescription Rejected
+        await notifyOrderStatusChangedWhatsapp({
+          id: updated.id,
+          shortId: updated.id.slice(-8).toUpperCase(),
+          customerName: order.customer?.name || 'Pelanggan',
+          customerPhone: order.customer?.phone,
+          oldStatus: order.status,
+          newStatus: 'CANCELLED',
+          updatedBy: authUser.name,
+          reason,
+        });
       } catch (err: any) {
-        console.warn('[Telegram Prescription Reject Hook]', err?.message);
+        console.warn('[Telegram/WhatsApp Prescription Reject Hook]', err?.message);
       }
     });
 
@@ -277,17 +305,37 @@ export async function handleVerifyPrescription(
     },
   });
 
-  // Telegram Notification: Prescription Approved
+  // Notification Dispatch: In-App DB, Telegram, WhatsApp
   Promise.resolve().then(async () => {
     try {
+      // 1. In-App Notification to Customer
+      await notifyOrderApprovedInApp({
+        id: updated.id,
+        shortId: updated.id.slice(-8).toUpperCase(),
+        customerId: order.customerId,
+        nextStatus,
+      });
+
+      // 2. Telegram Notification
       await notifyPrescriptionApproved({
         id: updated.id,
         shortId: updated.id.slice(-8).toUpperCase(),
         verifierName: authUser.name,
         nextStatus,
       });
+
+      // WhatsApp Notification (Fonnte): Notify Customer Prescription Approved
+      await notifyOrderStatusChangedWhatsapp({
+        id: updated.id,
+        shortId: updated.id.slice(-8).toUpperCase(),
+        customerName: order.customer?.name || 'Pelanggan',
+        customerPhone: order.customer?.phone,
+        oldStatus: order.status,
+        newStatus: nextStatus,
+        updatedBy: authUser.name,
+      });
     } catch (err: any) {
-      console.warn('[Telegram Prescription Approve Hook]', err?.message);
+      console.warn('[Telegram/WhatsApp Prescription Approve Hook]', err?.message);
     }
   });
 
@@ -335,6 +383,7 @@ export async function handleUpdateOrderStatus(
 
   const order = await prisma.order.findUnique({
     where: { id },
+    include: { customer: true },
   });
 
   if (!order) {
@@ -368,9 +417,20 @@ export async function handleUpdateOrderStatus(
     },
   });
 
-  // Telegram Notification: Order Status Changed
+  // Notification Dispatch: In-App DB, Telegram, WhatsApp
   Promise.resolve().then(async () => {
     try {
+      // 1. In-App Notification to Customer
+      await notifyOrderStatusChangedInApp({
+        id: updated.id,
+        shortId: updated.id.slice(-8).toUpperCase(),
+        customerId: order.customerId,
+        oldStatus: order.status,
+        newStatus,
+        reason: reason || undefined,
+      });
+
+      // 2. Telegram Notification
       await notifyOrderStatusChanged({
         id: updated.id,
         shortId: updated.id.slice(-8).toUpperCase(),
@@ -379,8 +439,20 @@ export async function handleUpdateOrderStatus(
         updatedBy: authUser.name,
         notes: reason || undefined,
       });
+
+      // WhatsApp Notification (Fonnte): Order Status Changed
+      await notifyOrderStatusChangedWhatsapp({
+        id: updated.id,
+        shortId: updated.id.slice(-8).toUpperCase(),
+        customerName: order.customer?.name || 'Pelanggan',
+        customerPhone: order.customer?.phone,
+        oldStatus: order.status,
+        newStatus,
+        updatedBy: authUser.name,
+        reason: reason || undefined,
+      });
     } catch (err: any) {
-      console.warn('[Telegram Order Status Hook]', err?.message);
+      console.warn('[Telegram/WhatsApp Order Status Hook]', err?.message);
     }
   });
 
