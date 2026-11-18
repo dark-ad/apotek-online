@@ -438,7 +438,7 @@ git clone [URL_REPOSITORY_GITHUB]
 ```bash
 cd [NAMA_FOLDER_PROJECT]
 ```
-*(Sesuaikan dengan nama folder hasil kloning, contoh: `cd apotek-sehat`)*
+*(cd apotek-sehat)*
 
 ### Langkah 3 – Install Dependencies
 
@@ -577,23 +577,8 @@ Dokumentasi video proyek dibagi menjadi tiga tahapan terpisah sesuai dengan inst
 
 ---
 
-### 1. VIDEO PROGRES 1 – ANALISIS SISTEM
-- **Deskripsi Konten**:  
-  Memaparkan latar belakang masalah, identifikasi kebutuhan sistem informasi apotek digital, ruang lingkup proyek, analisis aktor pengguna (*Customer*, *Staff*, *Admin*), serta diagram pemodelan **Use Case Diagram** dari aplikasi APOTEK SEHAT.
-- **Tautan Video**:  
-  🔗 **[MASUKKAN LINK VIDEO PROGRES 1]**
 
----
-
-### 2. VIDEO PROGRES 2 – PERANCANGAN SISTEM
-- **Deskripsi Konten**:  
-  Memaparkan perancangan terstruktur sistem meliputi **Activity Diagram** alur pemesanan dan validasi resep, **Entity Relationship Diagram (ERD)** / perancangan tabel basis data SQLite, **Class Diagram**, **Sequence Diagram** interaksi AI Assistant dan pemesanan obat, serta rancangan antarmuka UI/UX.
-- **Tautan Video**:  
-  🔗 **[MASUKKAN LINK VIDEO PROGRES 2]**
-
----
-
-### 3. VIDEO FINAL DEMO – PRESENTASI DAN DEMONSTRASI APLIKASI
+###  VIDEO FINAL DEMO – PRESENTASI DAN DEMONSTRASI APLIKASI
 - **Deskripsi Konten**:  
   Presentasi akhir dan demonstrasi menyeluruh (*live demo*) operasional aplikasi APOTEK SEHAT, meliputi:
   1. Menjalankan server aplikasi di lingkungan Windows (`npm.cmd run dev`).
@@ -605,7 +590,7 @@ Dokumentasi video proyek dibagi menjadi tiga tahapan terpisah sesuai dengan inst
 - **Ketentuan Teknis Video**:  
   Durasi video 8–12 menit per mahasiswa, menampilkan wajah presenter secara jelas melalui webcam, dan diproduksi dalam resolusi visual minimal 720p sesuai regulasi akademik.
 - **Tautan Video**:  
-  🔗 **[MASUKKAN LINK VIDEO FINAL DEMO]**
+  🔗 **[[MASUKKAN LINK VIDEO FINAL DEMO](https://youtu.be/RpdnHyePryM?si=b_Mkqf-UVWVrNtiC)]**
 
 ---
 
@@ -636,8 +621,7 @@ Dokumen dan repositori ini dipersiapkan sebagai pemenuhan syarat penilaian **Pro
 - [x] Sistem Notifikasi Pemesanan Otomatis (In-App DB, WhatsApp, Telegram) terdokumentasi lengkap dengan hasil tes integrasi.
 - [x] Dokumentasi arsitektur, provider, dan pembatasan AI Assistant dijelaskan secara transparan.
 - [x] Petunjuk instalasi dan eksekusi khusus Windows (`npm.cmd install` dan `npm.cmd run dev`) telah disertakan.
-- [ ] Tautan Video Progres 1 telah disematkan: `[MASUKKAN LINK VIDEO PROGRES 1]`
-- [ ] Tautan Video Progres 2 telah disematkan: `[MASUKKAN LINK VIDEO PROGRES 2]`
+
 - [ ] Tautan Video Final Demo telah disematkan: `[MASUKKAN LINK VIDEO FINAL DEMO]`
 
 ---
